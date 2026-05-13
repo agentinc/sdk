@@ -626,7 +626,6 @@
       <a href="#tool-decorator" class="sidebar-link">@tool Decorator</a>
       <a href="#tool-wrapper" class="sidebar-link">ToolWrapper</a>
       <a href="#raw-adapter" class="sidebar-link">RawAdapter</a>
-      <a href="#tenant-context" class="sidebar-link">TenantContext</a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">Serving</div>
@@ -640,9 +639,11 @@
       <a href="#example-anthropic" class="sidebar-link">Anthropic Agent</a>
       <a href="#example-langchain" class="sidebar-link">LangChain Agent</a>
       <a href="#example-crewai" class="sidebar-link">CrewAI Agent</a>
+      <a href="#example-tools" class="sidebar-link">Agent with Tools</a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">More</div>
+      <a href="#skill" class="sidebar-link">Claude Code Skill</a>
       <a href="#exports" class="sidebar-link">All Exports</a>
     </div>
   </div>
@@ -836,7 +837,7 @@ agent = <span class="cls">MyAgent</span>()
             <tr><td><code>message</code></td><td><code>str</code></td><td><em>required</em></td><td>The user's message text</td></tr>
             <tr><td><code>history</code></td><td><code>list[Message]</code></td><td><code>[]</code></td><td>Conversation history</td></tr>
             <tr><td><code>tool_schemas</code></td><td><code>list[ToolSchema]</code></td><td><code>[]</code></td><td>Available tools for this invocation</td></tr>
-            <tr><td><code>metadata</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Arbitrary metadata (tenant context, etc.)</td></tr>
+            <tr><td><code>metadata</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Arbitrary metadata</td></tr>
           </tbody>
         </table>
       </div>
@@ -1080,39 +1081,6 @@ agent = <span class="cls">RawAdapter</span>(<span class="fn">echo</span>)
     }</code></pre>
     </div>
 
-    <!-- TenantContext -->
-    <div class="section" id="tenant-context">
-      <h2>TenantContext</h2>
-      <p class="section-desc">Carries tenant isolation data through the agent invocation. Passed via <code>input.metadata["tenant"]</code>.</p>
-
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-model">Model</span>
-          <span class="api-card-name">TenantContext</span>
-        </div>
-        <p>Identifies which tenant is invoking the agent. Used for quota enforcement and data isolation.</p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>tenant_id</code></td><td><code>str</code></td><td><em>required</em></td><td>Unique tenant identifier</td></tr>
-            <tr><td><code>org_id</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Organization the tenant belongs to</td></tr>
-            <tr><td><code>quotas</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Token limits, rate limits, etc.</td></tr>
-            <tr><td><code>metadata</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Arbitrary tenant metadata</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">AgentInput</span>, <span class="cls">TenantContext</span>
-
-<span class="kw">def</span> <span class="fn">get_tenant</span>(<span class="param">input</span>: <span class="cls">AgentInput</span>) -> <span class="cls">TenantContext</span> | <span class="none">None</span>:
-    <span class="kw">if</span> <span class="str">"tenant"</span> <span class="kw">in</span> input.metadata:
-        <span class="kw">return</span> <span class="cls">TenantContext</span>.<span class="fn">model_validate</span>(input.metadata[<span class="str">"tenant"</span>])
-    <span class="kw">return</span> <span class="none">None</span></code></pre>
-    </div>
-
     <!-- A2A Server -->
     <div class="section" id="serve">
       <h2>A2A Server</h2>
@@ -1353,6 +1321,90 @@ researcher = <span class="cls">Agent</span>(
 <span class="fn">serve</span>(<span class="cls">RawAdapter</span>(crewai_agent), <span class="param">name</span>=<span class="str">"crewai-agent"</span>, <span class="param">port</span>=<span class="num">8004</span>)</code></pre>
     </div>
 
+    <div class="section" id="example-tools">
+      <h2>Example: Agent with Tools</h2>
+      <p class="section-desc">Full tool loop &mdash; the agent decides which tools to call, dispatches them, feeds results back to the LLM, and responds with a final answer.</p>
+
+      <pre><div class="code-header">agent_with_tools.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> openai <span class="kw">import</span> <span class="cls">AsyncOpenAI</span>
+<span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">AgentInput</span>, <span class="cls">RawAdapter</span>, <span class="cls">ToolCall</span>, <span class="fn">tool</span>
+<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">serve</span>
+
+client = <span class="cls">AsyncOpenAI</span>()
+
+<span class="dec">@tool</span>(<span class="param">description</span>=<span class="str">"Gets the current weather"</span>)
+<span class="kw">def</span> <span class="fn">get_weather</span>(<span class="param">city</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
+    <span class="kw">return</span> <span class="str">f"72°F and sunny in </span>{city}<span class="str">"</span>
+
+<span class="dec">@tool</span>(<span class="param">description</span>=<span class="str">"Evaluates a math expression"</span>)
+<span class="kw">def</span> <span class="fn">calculator</span>(<span class="param">expression</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
+    <span class="kw">return</span> <span class="fn">str</span>(<span class="fn">eval</span>(expression))
+
+TOOLS = [get_weather, calculator]
+TOOL_MAP = {t.<span class="fn">schema</span>().name: t <span class="kw">for</span> t <span class="kw">in</span> TOOLS}
+
+<span class="kw">async def</span> <span class="fn">smart_agent</span>(<span class="param">message</span>: <span class="typ">str</span>, <span class="param">history</span>: <span class="typ">list</span>, <span class="param">tools</span>: <span class="typ">list</span>):
+    messages = [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: message}]
+    openai_tools = [{<span class="str">"type"</span>: <span class="str">"function"</span>, <span class="str">"function"</span>: t} <span class="kw">for</span> t <span class="kw">in</span> tools]
+
+    <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(<span class="num">5</span>):  <span class="cmt"># max tool rounds</span>
+        resp = <span class="kw">await</span> client.chat.completions.<span class="fn">create</span>(
+            <span class="param">model</span>=<span class="str">"gpt-4o-mini"</span>, <span class="param">messages</span>=messages, <span class="param">tools</span>=openai_tools)
+        choice = resp.choices[<span class="num">0</span>]
+
+        <span class="kw">if not</span> choice.message.tool_calls:
+            <span class="kw">yield</span> choice.message.content
+            <span class="kw">return</span>
+
+        <span class="cmt"># Dispatch each tool call</span>
+        messages.append({<span class="str">"role"</span>: <span class="str">"assistant"</span>, <span class="str">"content"</span>: <span class="str">""</span>,
+            <span class="str">"tool_calls"</span>: [{<span class="str">"id"</span>: tc.id, <span class="str">"type"</span>: <span class="str">"function"</span>,
+                <span class="str">"function"</span>: {<span class="str">"name"</span>: tc.function.name,
+                    <span class="str">"arguments"</span>: tc.function.arguments}}
+                <span class="kw">for</span> tc <span class="kw">in</span> choice.message.tool_calls]})
+
+        <span class="kw">for</span> tc <span class="kw">in</span> choice.message.tool_calls:
+            result = <span class="kw">await</span> TOOL_MAP[tc.function.name].<span class="fn">call</span>(
+                <span class="cls">ToolCall</span>(<span class="param">id</span>=tc.id, <span class="param">name</span>=tc.function.name,
+                    <span class="param">arguments</span>=json.loads(tc.function.arguments)))
+            messages.append({<span class="str">"role"</span>: <span class="str">"tool"</span>, <span class="str">"tool_call_id"</span>: tc.id, <span class="str">"content"</span>: result})
+
+<span class="fn">serve</span>(<span class="cls">RawAdapter</span>(smart_agent), <span class="param">name</span>=<span class="str">"smart-agent"</span>, <span class="param">port</span>=<span class="num">8000</span>)</code></pre>
+
+      <div class="callout callout-tip">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg>
+        <span>The agent loops: LLM &rarr; tool calls &rarr; dispatch via <code>ToolWrapper.call()</code> &rarr; feed results back &rarr; repeat until the LLM responds with text instead of tool calls.</span>
+      </div>
+    </div>
+
+    <!-- Claude Code Skill -->
+    <div class="section" id="skill">
+      <h2>Claude Code Skill</h2>
+      <p class="section-desc">Install the agentinc-sdk skill in <a href="https://claude.ai/claude-code" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">Claude Code</a> so Claude understands the SDK and can help you build agents.</p>
+
+      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code>npx skills add github:agentinc/sdk/skills/agentinc-sdk</code></pre>
+
+      <p>Once installed, Claude will automatically use the skill when you:</p>
+
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-item-title">Build agents</div>
+          <div class="feature-item-desc">Ask Claude to create an agent with OpenAI, Anthropic, LangChain, or CrewAI and it will use the correct SDK patterns.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-title">Debug issues</div>
+          <div class="feature-item-desc">Claude knows all RawAdapter signatures, tool schema rules, and A2A endpoint formats.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-title">Add tools</div>
+          <div class="feature-item-desc">Claude will use <code>@tool</code> correctly with proper type hints and JSON Schema generation.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-title">Serve &amp; deploy</div>
+          <div class="feature-item-desc">Claude knows <code>create_app()</code> vs <code>serve()</code>, A2A protocol, and how to test with curl.</div>
+        </div>
+      </div>
+    </div>
+
     <!-- All Exports -->
     <div class="section" id="exports">
       <h2>All Exports</h2>
@@ -1370,7 +1422,6 @@ researcher = <span class="cls">Agent</span>(
     <span class="cls">ToolWrapper</span>,       <span class="cmt"># Class — wraps callable as ToolProtocol</span>
     <span class="fn">tool</span>,              <span class="cmt"># Decorator — function → ToolWrapper</span>
     <span class="cls">RawAdapter</span>,        <span class="cmt"># Class — wraps callable as AgentProtocol</span>
-    <span class="cls">TenantContext</span>,     <span class="cmt"># Model — tenant isolation context</span>
 )
 
 <span class="cmt"># Serve module (requires [serve] extra)</span>

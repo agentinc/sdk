@@ -48,7 +48,6 @@ curl -X POST http://localhost:8000 \
 | `ToolWrapper` | Class | Wraps any callable as a ToolProtocol |
 | `@tool` | Decorator | Function → ToolWrapper with auto-generated schema |
 | `RawAdapter` | Class | Any callable → AgentProtocol |
-| `TenantContext` | Model | Multi-tenant isolation context |
 
 ## RawAdapter signatures
 
@@ -87,6 +86,17 @@ See [`examples/`](examples/) for complete runnable agents:
 - **[anthropic_agent.py](examples/anthropic_agent.py)** — Anthropic Claude with tools
 - **[langchain_agent.py](examples/langchain_agent.py)** — LangChain with bound tools
 - **[crewai_agent.py](examples/crewai_agent.py)** — CrewAI research crew
+- **[agent_with_tools.py](examples/agent_with_tools.py)** — Full tool loop (agent calls tools, gets results, responds)
+
+## Claude Code Skill
+
+If you use [Claude Code](https://claude.ai/claude-code), install the agentinc-sdk skill so Claude understands the SDK and can help you build agents:
+
+```bash
+npx skills add github:agentinc/sdk/skills/agentinc-sdk
+```
+
+This teaches Claude about AgentProtocol, RawAdapter, @tool, serve(), and all framework integration patterns.
 
 ## Requirements
 
