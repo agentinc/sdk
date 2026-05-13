@@ -614,8 +614,8 @@
   <div class="sidebar-nav">
     <div class="sidebar-section">
       <div class="sidebar-section-title">Getting Started</div>
-      <a href="#skill" class="sidebar-link">Agent Skill</a>
       <a href="#installation" class="sidebar-link">Installation</a>
+      <a href="#skill" class="sidebar-link">Agent Skill</a>
       <a href="#quickstart" class="sidebar-link">Quickstart</a>
       <a href="#concepts" class="sidebar-link">Core Concepts</a>
     </div>
@@ -687,6 +687,26 @@
       </div>
     </div>
 
+    <!-- Installation -->
+    <div class="section" id="installation">
+      <h2>Installation</h2>
+      <p class="section-desc">Install the SDK with pip or uv. The only required dependency is Pydantic.</p>
+
+      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="cmt"># Core SDK (pydantic only)</span>
+pip install agentinc-sdk
+
+<span class="cmt"># With A2A server support (adds FastAPI + Uvicorn)</span>
+pip install agentinc-sdk[serve]
+
+<span class="cmt"># Development</span>
+pip install agentinc-sdk[dev]</code></pre>
+
+      <div class="callout callout-info">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>Requires <strong>Python 3.12+</strong>. The SDK has zero platform dependencies &mdash; it never imports from internal agentinc packages.</span>
+      </div>
+    </div>
+
     <!-- Agent Skill -->
     <div class="section" id="skill">
       <h2>Agent Skill</h2>
@@ -713,26 +733,6 @@
           <div class="feature-item-title">Serve &amp; deploy</div>
           <div class="feature-item-desc">Your coding agent knows <code>create_app()</code> vs <code>serve()</code>, A2A protocol, and how to test with curl.</div>
         </div>
-      </div>
-    </div>
-
-    <!-- Installation -->
-    <div class="section" id="installation">
-      <h2>Installation</h2>
-      <p class="section-desc">Install the SDK with pip or uv. The only required dependency is Pydantic.</p>
-
-      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="cmt"># Core SDK (pydantic only)</span>
-pip install agentinc-sdk
-
-<span class="cmt"># With A2A server support (adds FastAPI + Uvicorn)</span>
-pip install agentinc-sdk[serve]
-
-<span class="cmt"># Development</span>
-pip install agentinc-sdk[dev]</code></pre>
-
-      <div class="callout callout-info">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span>Requires <strong>Python 3.12+</strong>. The SDK has zero platform dependencies &mdash; it never imports from internal agentinc packages.</span>
       </div>
     </div>
 
