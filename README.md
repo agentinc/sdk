@@ -93,7 +93,7 @@ See [`examples/`](examples/) for complete runnable agents:
 If you use [Claude Code](https://claude.ai/claude-code), install the agentinc-sdk skill so Claude understands the SDK and can help you build agents:
 
 ```bash
-npx skills add github:agentinc/sdk/skills/agentinc-sdk
+npx skills add agentinc/sdk
 ```
 
 This teaches Claude about AgentProtocol, RawAdapter, @tool, serve(), and all framework integration patterns.
