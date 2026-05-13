@@ -88,15 +88,15 @@ See [`examples/`](examples/) for complete runnable agents:
 - **[crewai_agent.py](examples/crewai_agent.py)** — CrewAI research crew
 - **[agent_with_tools.py](examples/agent_with_tools.py)** — Full tool loop (agent calls tools, gets results, responds)
 
-## Claude Code Skill
+## Agent Skill
 
-If you use [Claude Code](https://claude.ai/claude-code), install the agentinc-sdk skill so Claude understands the SDK and can help you build agents:
+Install the agentinc-sdk skill so your coding agent understands the SDK and can help you build agents:
 
 ```bash
 npx skills add agentinc/sdk
 ```
 
-This teaches Claude about AgentProtocol, RawAdapter, @tool, serve(), and all framework integration patterns.
+Your coding agent will automatically use it when working with AgentProtocol, RawAdapter, @tool, serve(), and all framework integration patterns.
 
 ## Requirements
 
