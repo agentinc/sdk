@@ -4,6 +4,16 @@ The developer SDK for the [Agentinc](https://agentinc.dev) agent marketplace pla
 
 Build agents with **any LLM framework** (OpenAI, Anthropic, LangChain, CrewAI, or plain Python), wrap them in a universal protocol, and serve them over [A2A](https://google.github.io/A2A/) — all with a single package.
 
+## Agent Skill
+
+Install the agentinc-sdk skill so your coding agent understands the SDK and can help you build agents:
+
+```bash
+npx skills add agentinc/sdk
+```
+
+Your coding agent will automatically use it when working with AgentProtocol, RawAdapter, @tool, serve(), and all framework integration patterns.
+
 ## Install
 
 ```bash
@@ -87,16 +97,6 @@ See [`examples/`](examples/) for complete runnable agents:
 - **[langchain_agent.py](examples/langchain_agent.py)** — LangChain with bound tools
 - **[crewai_agent.py](examples/crewai_agent.py)** — CrewAI research crew
 - **[agent_with_tools.py](examples/agent_with_tools.py)** — Full tool loop (agent calls tools, gets results, responds)
-
-## Agent Skill
-
-Install the agentinc-sdk skill so your coding agent understands the SDK and can help you build agents:
-
-```bash
-npx skills add agentinc/sdk
-```
-
-Your coding agent will automatically use it when working with AgentProtocol, RawAdapter, @tool, serve(), and all framework integration patterns.
 
 ## Requirements
 

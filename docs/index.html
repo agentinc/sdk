@@ -614,6 +614,7 @@
   <div class="sidebar-nav">
     <div class="sidebar-section">
       <div class="sidebar-section-title">Getting Started</div>
+      <a href="#skill" class="sidebar-link">Agent Skill</a>
       <a href="#installation" class="sidebar-link">Installation</a>
       <a href="#quickstart" class="sidebar-link">Quickstart</a>
       <a href="#concepts" class="sidebar-link">Core Concepts</a>
@@ -643,7 +644,6 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">More</div>
-      <a href="#skill" class="sidebar-link">Agent Skill</a>
       <a href="#exports" class="sidebar-link">All Exports</a>
     </div>
   </div>
@@ -684,6 +684,35 @@
         <button class="copy-btn" onclick="copyText('pip install agentinc-sdk', this)" aria-label="Copy install command">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
+      </div>
+    </div>
+
+    <!-- Agent Skill -->
+    <div class="section" id="skill">
+      <h2>Agent Skill</h2>
+      <p class="section-desc">Install the agentinc-sdk skill so your coding agent understands the SDK and can help you build agents.</p>
+
+      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code>npx skills add agentinc/sdk</code></pre>
+
+      <p>Once installed, your coding agent will automatically use it when you:</p>
+
+      <div class="feature-grid">
+        <div class="feature-item">
+          <div class="feature-item-title">Build agents</div>
+          <div class="feature-item-desc">Ask your agent to create an agent with OpenAI, Anthropic, LangChain, or CrewAI and it will use the correct SDK patterns.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-title">Debug issues</div>
+          <div class="feature-item-desc">Your coding agent knows all RawAdapter signatures, tool schema rules, and A2A endpoint formats.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-title">Add tools</div>
+          <div class="feature-item-desc">Your coding agent will use <code>@tool</code> correctly with proper type hints and JSON Schema generation.</div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-item-title">Serve &amp; deploy</div>
+          <div class="feature-item-desc">Your coding agent knows <code>create_app()</code> vs <code>serve()</code>, A2A protocol, and how to test with curl.</div>
+        </div>
       </div>
     </div>
 
@@ -1373,35 +1402,6 @@ TOOL_MAP = {t.<span class="fn">schema</span>().name: t <span class="kw">for</spa
       <div class="callout callout-tip">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg>
         <span>The agent loops: LLM &rarr; tool calls &rarr; dispatch via <code>ToolWrapper.call()</code> &rarr; feed results back &rarr; repeat until the LLM responds with text instead of tool calls.</span>
-      </div>
-    </div>
-
-    <!-- Agent Skill -->
-    <div class="section" id="skill">
-      <h2>Agent Skill</h2>
-      <p class="section-desc">Install the agentinc-sdk skill so your coding agent understands the SDK and can help you build agents.</p>
-
-      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code>npx skills add agentinc/sdk</code></pre>
-
-      <p>Once installed, your coding agent will automatically use it when you:</p>
-
-      <div class="feature-grid">
-        <div class="feature-item">
-          <div class="feature-item-title">Build agents</div>
-          <div class="feature-item-desc">Ask your agent to create an agent with OpenAI, Anthropic, LangChain, or CrewAI and it will use the correct SDK patterns.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">Debug issues</div>
-          <div class="feature-item-desc">Your coding agent knows all RawAdapter signatures, tool schema rules, and A2A endpoint formats.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">Add tools</div>
-          <div class="feature-item-desc">Your coding agent will use <code>@tool</code> correctly with proper type hints and JSON Schema generation.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">Serve &amp; deploy</div>
-          <div class="feature-item-desc">Your coding agent knows <code>create_app()</code> vs <code>serve()</code>, A2A protocol, and how to test with curl.</div>
-        </div>
       </div>
     </div>
 
