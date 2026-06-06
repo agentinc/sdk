@@ -1,6 +1,6 @@
 # agentinc-sdk
 
-The developer SDK for the [Agentinc](https://agentinc.dev) agent marketplace platform.
+The developer SDK for the [Agentinc](https://withagentinc.com) agent marketplace platform.
 
 Declare an agent with `Agent()` — give it a role, model, tools, memory, or MCP connections — and serve it over [A2A](https://google.github.io/A2A/). The SDK handles provider selection, tool dispatch, session memory, and streaming automatically.
 
