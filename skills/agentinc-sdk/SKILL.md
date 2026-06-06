@@ -1,36 +1,35 @@
 ---
 name: agentinc-sdk
-description: "How to build, wrap, and serve AI agents using the agentinc-sdk Python package. Use this skill whenever the user is working with agentinc, agentinc-sdk, AgentProtocol, RawAdapter, or wants to create agents for the Agentinc marketplace. Also trigger when you see imports from agentinc.sdk, files referencing agentinc agent patterns, or when the user asks about wrapping OpenAI/Anthropic/LangChain/CrewAI agents into a universal protocol. Even if the user doesn't say 'agentinc' explicitly, trigger if they're working in a project that has agentinc-sdk as a dependency or has agentinc/ in its import paths."
+description: "How to build and serve AI agents using the agentinc-sdk Python package. Use this skill whenever the user is working with agentinc, agentinc-sdk, AgentProtocol, Agent(), RawAdapter, or wants to create agents for the Agentinc marketplace. Also trigger when you see imports from agentinc.sdk, files referencing agentinc agent patterns, Agent() constructor with role=/model=/tools=/mcps=/memory= params, or when the user asks about wrapping OpenAI/Anthropic/Gemini/LangChain/CrewAI agents into a universal protocol. Even if the user doesn't say 'agentinc' explicitly, trigger if they're working in a project that has agentinc-sdk as a dependency or has agentinc/ in its import paths."
 ---
 
 # Agentinc SDK
 
-The agentinc-sdk is the developer interface for the Agentinc agent marketplace. Developers build agents with any LLM framework, wrap them in a universal protocol, and serve them over A2A (Agent-to-Agent) — all with this single package.
+The agentinc-sdk is the developer interface for the Agentinc agent marketplace. Developers declare an agent using `Agent()`, and the SDK handles provider selection, tool dispatch, memory, and MCP connections automatically.
 
-The SDK is **open-source and self-contained** — it depends only on `pydantic>=2.7`.
+The SDK is **open-source**. Core (`pydantic>=2.7`) has zero LLM dependencies. Provider libraries are installed as optional extras.
 
 ## Installation
 
 ```bash
-pip install agentinc-sdk            # core (pydantic only)
-pip install agentinc-sdk[serve]     # adds FastAPI + Uvicorn for A2A serving
+pip install agentinc-sdk                    # core only (pydantic)
+pip install 'agentinc-sdk[openai,serve]'    # OpenAI + A2A server
+pip install 'agentinc-sdk[anthropic,serve]' # Anthropic + A2A server
+pip install 'agentinc-sdk[all]'             # everything
 ```
 
 Requires **Python 3.12+**.
 
 ## The Core Pattern
 
-Every agent in the Agentinc ecosystem follows this flow:
-
 ```
-Your function (any signature) → RawAdapter → AgentProtocol → serve()
+Agent(role, model, tools, mcps, memory) → AgentProtocol → serve()
 ```
 
-1. Write your agent as a plain Python function (sync, async, streaming — whatever you want)
-2. Wrap it with `RawAdapter` which auto-detects the signature and adapts it
-3. Optionally serve it over A2A with `serve()` or `create_app()`
+1. Declare your agent with `Agent()` — specify the role, model, tools, and optional memory/MCP
+2. Serve it over A2A with `serve()` or `create_app()`
 
-This means you **never need to implement AgentProtocol directly** unless you want fine-grained control. RawAdapter handles the translation.
+No provider client setup, no manual tool dispatch loop, no history wiring needed.
 
 ## Quick Reference
 
@@ -38,53 +37,174 @@ This means you **never need to implement AgentProtocol directly** unless you wan
 
 ```python
 from agentinc.sdk import (
-    AgentProtocol,     # Protocol — implement run(input) -> AsyncIterator[AgentOutput]
-    ToolProtocol,      # Protocol — implement schema() + call()
-    AgentFactory,      # Type alias — callable returning AgentProtocol
-    AgentInput,        # Pydantic model — agent invocation input
-    AgentOutput,       # Pydantic model — single output chunk
-    Message,           # Pydantic model — conversation history entry
-    ToolCall,          # Pydantic model — tool invocation request
-    ToolSchema,        # Pydantic model — tool JSON Schema description
-    ToolWrapper,       # Class — wraps callable as ToolProtocol
-    tool,              # Decorator — function → ToolWrapper
-    RawAdapter,        # Class — wraps any callable as AgentProtocol
+    Agent,          # Main class — declare and run agents
+    AgentProtocol,  # Protocol — implement run(input) -> AsyncIterator[AgentOutput]
+    ToolProtocol,   # Protocol — implement schema() + call()
+    AgentFactory,   # Type alias — callable returning AgentProtocol
+    AgentInput,     # Pydantic model — agent invocation input
+    AgentOutput,    # Pydantic model — single output chunk
+    Message,        # Pydantic model — conversation history entry
+    ToolCall,       # Pydantic model — tool invocation request
+    ToolSchema,     # Pydantic model — tool JSON Schema description
+    ToolWrapper,    # Class — wraps callable as ToolProtocol
+    tool,           # Decorator — function → ToolWrapper
+    # Config TypedDicts
+    ModelConfig,
+    MemoryConfig,
+    MCPConfig,
+    DataConfig,
+    # Deprecated
+    RawAdapter,     # DEPRECATED — use Agent() instead
 )
 
 # Serve module (requires [serve] extra)
 from agentinc.sdk.serve import create_app, serve
 ```
 
-### Minimal Agent (5 lines)
+### Minimal Agent (4 lines)
 
 ```python
-from agentinc.sdk import RawAdapter
+import os
+from agentinc.sdk import Agent
 from agentinc.sdk.serve import serve
 
-async def my_agent(message: str) -> str:
-    return f"You said: {message}"
+serve(
+    Agent(role="You are a helpful assistant.", model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}),
+    name="assistant", port=8000,
+)
+```
 
-serve(RawAdapter(my_agent), name="echo", port=8000)
+## Agent Constructor
+
+```python
+Agent(
+    role:    str,                      # system prompt / persona
+    model:   ModelConfig,              # provider + credentials (dict)
+    tools:   list[Callable] = [],      # plain Python functions, auto-wrapped
+    mcps:    list[MCPConfig] = [],     # MCP server connections
+    memory:  MemoryConfig | None = None,  # Redis-backed session memory
+    context: str | None = None,        # extra context appended to system prompt
+    data:    DataConfig | None = None, # RAG config (reserved, not yet implemented)
+)
+```
+
+`Agent` implements `AgentProtocol` — pass it directly to `serve()` or `create_app()`.
+
+### ModelConfig
+
+```python
+{
+    "model":    str,       # "gpt-4o-mini", "claude-sonnet-4-6", "gemini-1.5-pro", "deepseek-chat", …
+    "api_key":  str,
+    "base_url": str,       # optional — any OpenAI-compatible endpoint (DeepSeek, Groq, Ollama, …)
+}
+```
+
+Provider is auto-detected from the model string prefix. When `base_url` is set, the OpenAI-compatible provider is always used regardless of model name.
+
+| Model prefix | Provider | Extra needed |
+|---|---|---|
+| `gpt-*`, `o1-*`, `o3-*` | OpenAI | `[openai]` |
+| `claude-*` | Anthropic | `[anthropic]` |
+| `gemini-*` | Google Gemini | `[gemini]` |
+| anything + `base_url` | OpenAI-compatible | `[openai]` |
+
+### MemoryConfig
+
+```python
+{
+    "type":       "redis",
+    "connection": "redis://localhost:6379/0",
+    "user":       str | None,
+    "password":   str | None,
+}
+```
+
+Session ID is read from `input.metadata["session_id"]`. Falls back to a per-request UUID when absent (stateless).
+
+### MCPConfig
+
+```python
+# stdio transport
+{"type": "stdio", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]}
+
+# SSE transport
+{"type": "sse", "url": "http://localhost:3001/sse"}
+```
+
+MCP tool schemas are fetched and merged with local tools on first `run()` call.
+
+## Examples
+
+### OpenAI with tools
+
+```python
+import os
+from agentinc.sdk import Agent
+from agentinc.sdk.serve import serve
+
+def get_weather(city: str) -> str:
+    """Gets the current weather for a city."""
+    return f"72°F and sunny in {city}"
+
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    tools=[get_weather],
+)
+serve(agent, name="assistant", port=8000)
+```
+
+### Anthropic with memory
+
+```python
+import os
+from agentinc.sdk import Agent
+from agentinc.sdk.serve import serve
+
+agent = Agent(
+    role="You are a customer support agent.",
+    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+    memory={"type": "redis", "connection": "redis://localhost:6379", "password": "secret"},
+)
+serve(agent, name="support", port=8000)
+```
+
+### DeepSeek (OpenAI-compatible endpoint)
+
+```python
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={
+        "model":    "deepseek-chat",
+        "api_key":  os.environ["DEEPSEEK_API_KEY"],
+        "base_url": "https://api.deepseek.com",
+    },
+)
+```
+
+### With MCP server
+
+```python
+agent = Agent(
+    role="You are a file assistant.",
+    model={"model": "gpt-4o", "api_key": os.environ["OPENAI_API_KEY"]},
+    mcps=[{"type": "stdio", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]}],
+)
 ```
 
 ## Schemas
 
-All models are Pydantic v2 `BaseModel` subclasses.
-
 ### AgentInput
-
-The input to every agent invocation.
 
 | Field | Type | Default | Purpose |
 |-------|------|---------|---------|
 | `message` | `str` | *required* | The user's message |
 | `history` | `list[Message]` | `[]` | Conversation history |
-| `tool_schemas` | `list[ToolSchema]` | `[]` | Available tools |
-| `metadata` | `dict[str, Any]` | `{}` | Arbitrary metadata |
+| `tool_schemas` | `list[ToolSchema]` | `[]` | Available tools (caller-supplied) |
+| `metadata` | `dict[str, Any]` | `{}` | Arbitrary metadata; `session_id` key used by memory |
 
 ### AgentOutput
-
-A single chunk yielded by an agent. Agents yield one or more of these.
 
 | Field | Type | Default | Purpose |
 |-------|------|---------|---------|
@@ -93,153 +213,55 @@ A single chunk yielded by an agent. Agents yield one or more of these.
 | `done` | `bool` | `False` | Whether this is the final chunk |
 | `metadata` | `dict[str, Any]` | `{}` | Arbitrary output metadata |
 
-### Message
-
-```python
-Message(role="user" | "assistant" | "tool", content="...", tool_call_id=None, tool_calls=[])
-```
-
-### ToolCall
-
-```python
-ToolCall(id="call-1", name="search", arguments={"query": "test"})
-```
-
-### ToolSchema
-
-```python
-ToolSchema(name="search", description="Searches the web", parameters={"type": "object", ...})
-```
-
-## RawAdapter
-
-The most important class in the SDK. It wraps **any** callable as an `AgentProtocol`, auto-detecting the signature pattern.
-
-### Supported Signatures
-
-RawAdapter inspects your function and maps arguments automatically. Your function does **not** need to import anything from agentinc:
-
-| Signature | What happens |
-|-----------|-------------|
-| `fn(message: str) -> str` | Simple request → response |
-| `fn(message: str) -> AsyncIterator[str]` | Streaming text chunks |
-| `fn(message: str, history: list) -> ...` | Gets conversation history as plain dicts |
-| `fn(message: str, history: list, tools: list) -> ...` | Gets history + tool schemas as dicts |
-| `fn(input: AgentInput) -> AgentOutput` | Full control with SDK types |
-| `fn(input: AgentInput) -> AsyncIterator[AgentOutput]` | Full streaming with SDK types |
-
-The parameter name `message` must be the first parameter for auto-detection to work. For full control, accept `AgentInput` directly.
-
-### Tool Call Dispatch
-
-When your function yields a dict with `tool_calls`, RawAdapter converts it to a proper `AgentOutput`:
-
-```python
-async def my_agent(message: str, history: list, tools: list):
-    # Signal that you want to call a tool
-    yield {
-        "tool_calls": [{"id": "1", "name": "search", "arguments": {"q": message}}],
-        "done": False,
-    }
-```
-
-Read `references/raw-adapter.md` for advanced patterns and edge cases.
-
 ## @tool Decorator
 
-Turns any function into a `ToolProtocol` with auto-generated JSON Schema from type hints.
+Turns any function into a `ToolProtocol` with auto-generated JSON Schema from type hints. When using `Agent(tools=[...])`, plain functions are auto-wrapped — `@tool` is optional but useful for adding descriptions.
 
 ```python
 from agentinc.sdk import tool, ToolCall
 
-@tool
-async def search(query: str, limit: int = 10) -> str:
-    return f"Results for {query}"
-
-# With explicit name and description
-@tool(name="add", description="Adds two numbers")
+@tool(description="adds two numbers")
 def add(a: float, b: float) -> str:
     return str(a + b)
-```
-
-The resulting `ToolWrapper` can be called two ways:
-
-```python
-# Via ToolCall (how the platform dispatches)
-result = await search.call(ToolCall(id="1", name="search", arguments={"query": "test"}))
 
 # Direct call
-result = await search(query="test")
+result = await add(a=3, b=4)
+
+# Via ToolCall (how the platform dispatches)
+result = await add.call(ToolCall(id="1", name="add", arguments={"a": 3, "b": 4}))
 ```
 
-### Type Mappings
+## AgentProtocol — Direct Implementation
 
-| Python | JSON Schema |
-|--------|------------|
-| `str` | `{"type": "string"}` |
-| `int` | `{"type": "integer"}` |
-| `float` | `{"type": "number"}` |
-| `bool` | `{"type": "boolean"}` |
-| `list` | `{"type": "array"}` |
-| `list[str]` | `{"type": "array", "items": {"type": "string"}}` |
-| `dict` | `{"type": "object"}` |
-
-Parameters without defaults become `required` in the schema.
-
-## AgentProtocol
-
-The universal contract. It's a `runtime_checkable` Protocol — you satisfy it by structural subtyping (just implement the method, no inheritance needed):
+For framework integrations (LangChain, CrewAI) where you manage the LLM yourself, implement `AgentProtocol` directly instead of using `Agent()`:
 
 ```python
-@runtime_checkable
-class AgentProtocol(Protocol):
-    def run(self, input: AgentInput) -> AsyncIterator[AgentOutput]: ...
-```
-
-Direct implementation (rarely needed — prefer RawAdapter):
-
-```python
-from agentinc.sdk import AgentInput, AgentOutput
+from agentinc.sdk import AgentInput, AgentOutput, AgentProtocol
 
 class MyAgent:
     async def run(self, input: AgentInput):
         yield AgentOutput(content=f"Got: {input.message}", done=True)
 
 assert isinstance(MyAgent(), AgentProtocol)  # passes
+serve(MyAgent(), name="my-agent", port=8000)
 ```
 
 ## Serving Over A2A
 
-The `serve` module exposes agents over HTTP using the A2A protocol (JSON-RPC 2.0 + SSE streaming). Requires the `[serve]` extra.
-
-### serve() — One-liner for local dev
-
 ```python
-from agentinc.sdk import RawAdapter
-from agentinc.sdk.serve import serve
+from agentinc.sdk.serve import serve, create_app
 
-serve(RawAdapter(my_fn), name="my-agent", description="Does things", host="0.0.0.0", port=8000)
+# Blocking (dev/scripts)
+serve(agent, name="my-agent", description="Does things", host="0.0.0.0", port=8000)
+
+# Returns FastAPI app (for custom ASGI deployments)
+app = create_app(agent, name="my-agent")
 ```
-
-### create_app() — For custom deployment
-
-Returns a FastAPI app you can run with any ASGI server:
-
-```python
-from agentinc.sdk.serve import create_app
-
-app = create_app(RawAdapter(my_fn), name="my-agent")
-# Run with: uvicorn myfile:app --port 8000
-```
-
-### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/.well-known/agent.json` | Agent card |
 | `POST` | `/` | JSON-RPC 2.0 (`tasks/send`, `tasks/sendSubscribe`) |
-
-### Testing with curl
 
 ```bash
 # Request/response
@@ -253,66 +275,18 @@ curl -N -X POST http://localhost:8000 \
   -d '{"jsonrpc":"2.0","id":1,"method":"tasks/sendSubscribe","params":{"id":"t1","message":{"role":"user","parts":[{"type":"text","text":"hello"}]}}}'
 ```
 
-## Framework Integration Patterns
-
-The SDK wraps agents from any framework. The pattern is always:
-
-1. Use the framework's native client/API
-2. Convert the framework's response to either a `str` yield or a `dict` with `tool_calls`
-3. Wrap with `RawAdapter`
-4. Serve with `serve()`
-
-Read `references/frameworks.md` for complete examples for OpenAI, Anthropic, LangChain, and CrewAI.
-
-### Quick Pattern — OpenAI
-
-```python
-from openai import AsyncOpenAI
-from agentinc.sdk import RawAdapter
-from agentinc.sdk.serve import serve
-
-client = AsyncOpenAI()
-
-async def openai_agent(message: str, history: list, tools: list):
-    messages = [{"role": "user", "content": message}]
-    response = await client.chat.completions.create(model="gpt-4o-mini", messages=messages)
-    yield response.choices[0].message.content
-
-serve(RawAdapter(openai_agent), name="openai-agent", port=8000)
-```
-
-### Quick Pattern — Anthropic
-
-```python
-from anthropic import AsyncAnthropic
-from agentinc.sdk import RawAdapter
-from agentinc.sdk.serve import serve
-
-client = AsyncAnthropic()
-
-async def anthropic_agent(message: str):
-    response = await client.messages.create(
-        model="claude-sonnet-4-20250514", max_tokens=1024,
-        messages=[{"role": "user", "content": message}],
-    )
-    yield response.content[0].text
-
-serve(RawAdapter(anthropic_agent), name="claude-agent", port=8000)
-```
-
 ## Key Rules
 
 1. **SDK imports only from itself.** Never add imports from `agentinc.core`, `agentinc.runner`, `agentinc.loader`, `agentinc.engine`, or `agentinc.protocols`. Those are platform internals.
-2. **RawAdapter is the default path.** Only implement `AgentProtocol` directly if you need something RawAdapter can't provide.
-3. **Python 3.12+ required.** Always use `--python 3.12` when creating venvs with `uv`.
-4. **The `[serve]` extra is optional.** Core SDK functionality works without FastAPI/Uvicorn.
-5. **Tool functions return `str`.** The `@tool` decorator and `ToolWrapper.call()` always return `str`.
+2. **Use `Agent()` as the default path.** Only implement `AgentProtocol` directly for framework integrations (LangChain, CrewAI) that manage their own LLM calls.
+3. **`RawAdapter` is deprecated.** It still works but emits a `DeprecationWarning`. Migrate to `Agent()`.
+4. **Python 3.12+ required.** Always use `--python 3.12` when creating venvs with `uv`.
+5. **Provider extras are required.** `Agent` lazy-imports the provider library — install the matching extra (`[openai]`, `[anthropic]`, `[gemini]`) or the import will fail with a clear error.
+6. **Tool functions return `str`.** `ToolWrapper.call()` always returns `str`.
 
 ## Reference Files
 
-For detailed API docs, read these files as needed:
-
-- `references/api.md` — Complete field-level reference for every schema and protocol
-- `references/raw-adapter.md` — All RawAdapter signature patterns, edge cases, and streaming details
-- `references/frameworks.md` — Full examples for OpenAI, Anthropic, LangChain, and CrewAI with tool support
+- `references/api.md` — Complete field-level reference for Agent, all schemas, and protocols
+- `references/raw-adapter.md` — RawAdapter (deprecated) — signature patterns for migration reference
+- `references/frameworks.md` — Framework integration examples (LangChain, CrewAI)
 - `references/serve.md` — A2A serve module: endpoints, JSON-RPC methods, SSE streaming format

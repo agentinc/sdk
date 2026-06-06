@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import warnings
 from typing import Any, AsyncIterator
 
 from .schemas import AgentInput, AgentOutput, ToolCall
@@ -74,6 +75,11 @@ def _chunk_to_output(chunk: Any) -> AgentOutput:
 
 class RawAdapter:
     """
+    .. deprecated::
+        RawAdapter is deprecated. Use :class:`agentinc.sdk.Agent` instead.
+        RawAdapter will be removed in v0.3.
+    """
+    """
     Wraps any callable as an AgentProtocol.
 
     Supported signatures (no agentinc imports required in the wrapped fn):
@@ -86,6 +92,12 @@ class RawAdapter:
     """
 
     def __init__(self, fn: Any) -> None:
+        warnings.warn(
+            "RawAdapter is deprecated and will be removed in v0.3. "
+            "Use Agent() instead: from agentinc.sdk import Agent",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         self._fn = fn
 
     async def run(self, input: AgentInput) -> AsyncIterator[AgentOutput]:

@@ -1,16 +1,15 @@
 """
-Agent with tools — demonstrates @tool decorator and ToolWrapper.
-
-This example doesn't serve over HTTP; it runs the agent locally
-to show how tools integrate with RawAdapter.
+Demonstrates the @tool decorator and Agent with tools running locally (no HTTP server).
 
 Run:
+    export OPENAI_API_KEY=sk-...
     python examples/tool_agent.py
 """
 
 import asyncio
+import os
 
-from agentinc.sdk import tool, RawAdapter, AgentInput, ToolCall
+from agentinc.sdk import Agent, AgentInput, ToolCall, tool
 
 
 @tool(description="adds two numbers")
@@ -23,13 +22,9 @@ def multiply(a: float, b: float) -> str:
     return str(a * b)
 
 
-async def calculator(message: str, history: list, tools: list) -> str:
-    return f"I have {len(tools)} tools available. You said: {message}"
-
-
 async def main():
     print("=== Tool schemas ===")
-    print(f"  add: {add.schema().model_dump()}")
+    print(f"  add:      {add.schema().model_dump()}")
     print(f"  multiply: {multiply.schema().model_dump()}")
 
     print("\n=== Direct tool calls ===")
@@ -39,14 +34,18 @@ async def main():
     result = await multiply.call(ToolCall(id="2", name="multiply", arguments={"a": 5, "b": 6}))
     print(f"  multiply(5, 6) = {result}")
 
-    print("\n=== Agent with tool awareness ===")
-    agent = RawAdapter(calculator)
-    inp = AgentInput(
-        message="what is 3+4?",
-        tool_schemas=[add.schema(), multiply.schema()],
+    print("\n=== Agent with tools ===")
+    agent = Agent(
+        role="You are a calculator assistant. Use the tools to compute answers.",
+        model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+        tools=[add, multiply],
     )
+
+    inp = AgentInput(message="What is 3 + 4, and then multiply that result by 6?")
     async for output in agent.run(inp):
-        print(f"  agent: {output.content}")
+        if output.content:
+            print(f"  agent: {output.content}", end="", flush=True)
+    print()
 
 
 if __name__ == "__main__":

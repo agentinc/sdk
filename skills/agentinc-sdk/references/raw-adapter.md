@@ -1,125 +1,129 @@
-# RawAdapter — Detailed Reference
+# RawAdapter — Migration Reference
 
-RawAdapter is the bridge between arbitrary Python functions and the AgentProtocol. It inspects function signatures at construction time and routes `AgentInput` fields to matching parameters at call time.
+> ⚠️ **Deprecated in v0.2.** `RawAdapter` emits a `DeprecationWarning` on instantiation and will be removed in v0.3.
+>
+> **Migrate to `Agent()`:**
+> ```python
+> # Before
+> serve(RawAdapter(my_fn), name="agent", port=8000)
+>
+> # After
+> serve(Agent(role="...", model={...}, tools=[...]), name="agent", port=8000)
+> ```
 
-## Signature Detection Rules
+This file is kept as a reference for teams migrating from `RawAdapter` patterns.
 
-RawAdapter checks parameters in this order:
+---
 
-### 1. First parameter is `message: str`
+## Migration Guide
 
-The function's first parameter must be named anything but annotated as `str`, or named `message` with no annotation. RawAdapter then checks for additional positional parameters:
+### Simple function → Agent
+
+```python
+# Before
+async def my_agent(message: str) -> str:
+    return f"You said: {message}"
+
+serve(RawAdapter(my_agent), name="agent", port=8000)
+
+# After (no LLM — implement AgentProtocol directly)
+class MyAgent:
+    async def run(self, input: AgentInput):
+        yield AgentOutput(content=f"You said: {input.message}", done=True)
+
+serve(MyAgent(), name="agent", port=8000)
+```
+
+### OpenAI function → Agent
+
+```python
+# Before
+async def openai_agent(message: str, history: list, tools: list):
+    ...  # manual OpenAI wiring
+    yield response.choices[0].message.content
+
+serve(RawAdapter(openai_agent), ...)
+
+# After
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    tools=[my_tool_fn],
+)
+serve(agent, ...)
+```
+
+### Anthropic function → Agent
+
+```python
+# Before
+async def anthropic_agent(message: str, history: list, tools: list):
+    ...  # manual Anthropic wiring
+    yield block.text
+
+serve(RawAdapter(anthropic_agent), ...)
+
+# After
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+)
+serve(agent, ...)
+```
+
+### Framework integrations (LangChain, CrewAI) → AgentProtocol
+
+For framework integrations that manage their own LLM calls, implement `AgentProtocol` directly:
+
+```python
+# Before (LangChain)
+async def langchain_agent(message: str, history: list):
+    ...
+serve(RawAdapter(langchain_agent), ...)
+
+# After
+class LangChainAgent:
+    async def run(self, input: AgentInput):
+        response = await llm.ainvoke(messages)
+        yield AgentOutput(content=response.content, done=True)
+
+serve(LangChainAgent(), ...)
+```
+
+---
+
+## Old Signature Detection Rules (reference only)
+
+The following describes how `RawAdapter` used to work. This is preserved for migration reference.
+
+RawAdapter checked the function signature in this order:
 
 **Just message:**
 ```python
-async def agent(message: str) -> str:
-    return f"Got: {message}"
+async def agent(message: str) -> str: ...
 ```
 
 **Message + history:**
 ```python
 async def agent(message: str, history: list) -> str:
-    prev = len(history)
-    return f"Got: {message} (after {prev} messages)"
-```
-
-The `history` parameter receives a `list[dict]`, where each dict has:
-```python
-{"role": "user"|"assistant"|"tool", "content": "...", "tool_calls": [...], "tool_call_id": "..."}
+    # history was a list[dict]: {"role": ..., "content": ..., "tool_calls": ..., "tool_call_id": ...}
 ```
 
 **Message + history + tools:**
 ```python
 async def agent(message: str, history: list, tools: list):
-    # tools is a list of dicts: [{"name": "...", "description": "...", "parameters": {...}}]
-    yield f"I have {len(tools)} tools"
+    # tools was a list[dict]: {"name": ..., "description": ..., "parameters": {...}}
 ```
 
-The second parameter must be named `history` and the third must be named `tools` for auto-detection to work.
-
-### 2. First parameter accepts AgentInput
-
-If the first parameter is not a str-like, RawAdapter passes the full `AgentInput` object:
-
+**Full AgentInput:**
 ```python
-from agentinc.sdk import AgentInput, AgentOutput
-
-async def agent(input: AgentInput) -> AgentOutput:
-    return AgentOutput(content=input.message, done=True)
+async def agent(input: AgentInput) -> AgentOutput: ...
 ```
 
-## Return Type Handling
-
-RawAdapter adapts the return value automatically:
-
-### String return
+Tool calls were signalled by yielding a dict:
 ```python
-async def agent(message: str) -> str:
-    return "hello"
-# → yields AgentOutput(content="hello", done=True)
+yield {
+    "tool_calls": [{"id": "1", "name": "search", "arguments": {"q": message}}],
+    "done": False,
+}
 ```
-
-### AgentOutput return
-```python
-async def agent(input: AgentInput) -> AgentOutput:
-    return AgentOutput(content="hello", tool_calls=[], done=True)
-# → yields that AgentOutput as-is
-```
-
-### Async generator yielding strings (streaming)
-```python
-async def agent(message: str):
-    yield "hello "
-    yield "world"
-# → yields AgentOutput(content="hello ", done=False)
-# → yields AgentOutput(content="world", done=False)
-# → yields AgentOutput(content="", done=True)  ← auto-appended sentinel
-```
-
-When an async generator yields only strings, RawAdapter appends a final `AgentOutput(content="", done=True)` after the generator exhausts.
-
-### Async generator yielding dicts (tool calls)
-```python
-async def agent(message: str, history: list, tools: list):
-    yield {
-        "tool_calls": [
-            {"id": "tc-1", "name": "search", "arguments": {"q": message}}
-        ],
-        "done": False,
-    }
-```
-
-Dict chunks are converted: each entry in `tool_calls` becomes a `ToolCall` model, and the dict becomes an `AgentOutput`.
-
-### Async generator yielding AgentOutput directly
-```python
-async def agent(input: AgentInput):
-    yield AgentOutput(content="thinking...", done=False)
-    yield AgentOutput(content="done!", done=True)
-# → yields each AgentOutput as-is
-```
-
-### Mixed generators
-
-You can mix strings and dicts in the same generator:
-```python
-async def agent(message: str, history: list, tools: list):
-    yield "Let me search for that..."                # string → streaming text
-    yield {"tool_calls": [...], "done": False}       # dict → tool call
-    yield "Here's what I found: ..."                 # string → more text
-```
-
-### Sync functions
-
-RawAdapter handles sync functions by awaiting the coroutine if needed:
-```python
-def agent(message: str) -> str:
-    return "sync works too"
-```
-
-## Edge Cases
-
-- If the function raises an exception, it propagates — RawAdapter does not catch errors.
-- A function that returns `None` or a non-string/non-AgentOutput gets `str()` called on it and wrapped in `AgentOutput(content=str(result), done=True)`.
-- Sync generators are not supported — use async generators.
-- The parameter name detection is case-sensitive: `message`, `history`, `tools`.

@@ -2,19 +2,18 @@
 
 The developer SDK for the [Agentinc](https://agentinc.dev) agent marketplace platform.
 
-Build agents with **any LLM framework** (OpenAI, Anthropic, LangChain, CrewAI, or plain Python), wrap them in a universal protocol, and serve them over [A2A](https://google.github.io/A2A/) — all with a single package.
+Declare an agent with `Agent()` — give it a role, model, tools, memory, or MCP connections — and serve it over [A2A](https://google.github.io/A2A/). The SDK handles provider selection, tool dispatch, session memory, and streaming automatically.
 
 ## Install
 
 ```bash
-pip install agentinc-sdk
+pip install agentinc-sdk                    # core (pydantic only)
+pip install 'agentinc-sdk[openai,serve]'    # OpenAI + A2A server
+pip install 'agentinc-sdk[anthropic,serve]' # Anthropic + A2A server
+pip install 'agentinc-sdk[all]'             # everything
 ```
 
-With A2A server support:
-
-```bash
-pip install agentinc-sdk[serve]
-```
+Requires **Python 3.12+**.
 
 ## Agent Skill
 
@@ -24,30 +23,96 @@ Install the agentinc-sdk skill so your coding agent understands the SDK and can 
 npx skills add agentinc/sdk
 ```
 
-Your coding agent will automatically use it when working with AgentProtocol, RawAdapter, @tool, serve(), and all framework integration patterns.
+Your coding agent will automatically use it when working with `Agent()`, `AgentProtocol`, `@tool`, `serve()`, and all framework integration patterns.
 
 ## Quickstart
 
 ```python
-from agentinc.sdk import RawAdapter
+import os
+from agentinc.sdk import Agent
 from agentinc.sdk.serve import serve
 
-async def my_agent(message: str) -> str:
-    return f"You said: {message}"
+def get_weather(city: str) -> str:
+    """Gets the current weather for a city."""
+    return f"72°F and sunny in {city}"
 
-serve(RawAdapter(my_agent), name="echo", port=8000)
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    tools=[get_weather],
+)
+
+serve(agent, name="my-agent", port=8000)
 ```
 
 ```bash
 curl -X POST http://localhost:8000 \
   -H "Content-Type: application/json" \
-  -d '{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","message":{"role":"user","parts":[{"type":"text","text":"hello"}]}}}'
+  -d '{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","message":{"role":"user","parts":[{"type":"text","text":"What is the weather in Paris?"}]}}}'
+```
+
+## Agent Constructor
+
+```python
+Agent(
+    role:    str,                      # system prompt / persona
+    model:   ModelConfig,              # provider + credentials
+    tools:   list[Callable] = [],      # plain Python functions — auto-wrapped
+    mcps:    list[MCPConfig] = [],     # MCP server connections
+    memory:  MemoryConfig | None = None,  # Redis-backed session memory
+    context: str | None = None,        # extra context appended to system prompt
+    data:    DataConfig | None = None, # RAG config (reserved, not yet implemented)
+)
+```
+
+### ModelConfig — provider is auto-detected from model name
+
+```python
+{"model": "gpt-4o-mini",       "api_key": "sk-..."}           # OpenAI
+{"model": "claude-sonnet-4-6", "api_key": "sk-ant-..."}        # Anthropic
+{"model": "gemini-1.5-pro",    "api_key": "..."}               # Gemini
+{"model": "deepseek-chat",     "api_key": "sk-...", "base_url": "https://api.deepseek.com"}  # any OpenAI-compatible
+```
+
+### With Redis memory
+
+```python
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    memory={
+        "type":       "redis",
+        "connection": "redis://localhost:6379",
+    },
+)
+```
+
+Pass `session_id` in request metadata to persist history across turns:
+
+```bash
+curl -X POST http://localhost:8000 \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","metadata":{"session_id":"user-123"},"message":{"role":"user","parts":[{"type":"text","text":"My name is Alice"}]}}}'
+```
+
+### With MCP server
+
+```python
+agent = Agent(
+    role="You are a file assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    mcps=[{
+        "type":    "stdio",
+        "command": "npx",
+        "args":    ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    }],
+)
 ```
 
 ## What's in the SDK
 
 | Export | Type | Description |
 |--------|------|-------------|
+| `Agent` | Class | Main developer-facing class — wires provider, tools, memory, MCP |
 | `AgentProtocol` | Protocol | Universal agent contract — implement `run()` |
 | `ToolProtocol` | Protocol | Tool contract — implement `schema()` + `call()` |
 | `AgentInput` | Model | Input to every agent invocation |
@@ -55,54 +120,83 @@ curl -X POST http://localhost:8000 \
 | `Message` | Model | Conversation history entry |
 | `ToolCall` | Model | Tool invocation request |
 | `ToolSchema` | Model | Tool JSON Schema description |
-| `ToolWrapper` | Class | Wraps any callable as a ToolProtocol |
-| `@tool` | Decorator | Function → ToolWrapper with auto-generated schema |
-| `RawAdapter` | Class | Any callable → AgentProtocol |
-
-## RawAdapter signatures
-
-`RawAdapter` auto-detects your function signature — no SDK imports needed in your agent code:
-
-```python
-async def agent(message: str) -> str                          # simple
-async def agent(message: str) -> AsyncIterator[str]           # streaming
-async def agent(message: str, history: list) -> str           # with history
-async def agent(message: str, history: list, tools: list)     # with tools
-async def agent(input: AgentInput) -> AgentOutput             # full control
-async def agent(input: AgentInput) -> AsyncIterator[AgentOutput]  # full streaming
-```
+| `ModelConfig` | TypedDict | Provider + credentials config |
+| `MemoryConfig` | TypedDict | Redis memory config |
+| `MCPConfig` | TypedDict | MCP server connection config |
+| `DataConfig` | TypedDict | RAG config (reserved) |
+| `ToolWrapper` | Class | Wraps any callable as a `ToolProtocol` |
+| `@tool` | Decorator | Function → `ToolWrapper` with auto-generated schema |
+| `RawAdapter` | Class | **Deprecated** — use `Agent()` instead |
 
 ## @tool decorator
+
+Plain functions passed to `tools=` are auto-wrapped. Use `@tool` when you want an explicit name or description:
 
 ```python
 from agentinc.sdk import tool, ToolCall
 
-@tool(description="adds two numbers")
+@tool(name="add", description="Adds two numbers")
 def add(a: float, b: float) -> str:
     return str(a + b)
 
 result = await add.call(ToolCall(id="1", name="add", arguments={"a": 3, "b": 4}))
-# "7"
+# "7.0"
 ```
 
-## Framework examples
+## AgentProtocol — direct implementation
+
+For framework integrations (LangChain, CrewAI) that manage their own LLM calls, implement `AgentProtocol` directly:
+
+```python
+from agentinc.sdk import AgentInput, AgentOutput, AgentProtocol
+from agentinc.sdk.serve import serve
+
+class MyAgent:
+    async def run(self, input: AgentInput):
+        yield AgentOutput(content=f"Got: {input.message}", done=True)
+
+assert isinstance(MyAgent(), AgentProtocol)  # passes
+serve(MyAgent(), name="my-agent", port=8000)
+```
+
+## Package extras
+
+| Extra | Installs | Use for |
+|-------|----------|---------|
+| `openai` | `openai>=1.0` | OpenAI + any OpenAI-compatible endpoint |
+| `anthropic` | `anthropic>=0.25` | Anthropic Claude models |
+| `gemini` | `google-genai>=1.0` | Google Gemini models |
+| `memory` | `redis>=5.0` | Redis-backed session memory |
+| `mcp` | `mcp>=1.0` | MCP server connections |
+| `serve` | fastapi, uvicorn, sse-starlette | A2A HTTP server |
+| `all` | all of the above | Full install |
+
+## Examples
 
 See [`examples/`](examples/) for complete runnable agents:
 
-- **[echo_agent.py](examples/echo_agent.py)** — Minimal A2A agent
-- **[streaming_agent.py](examples/streaming_agent.py)** — SSE streaming
-- **[tool_agent.py](examples/tool_agent.py)** — @tool decorator demo
-- **[openai_agent.py](examples/openai_agent.py)** — OpenAI GPT-4o-mini with tools
-- **[anthropic_agent.py](examples/anthropic_agent.py)** — Anthropic Claude with tools
-- **[langchain_agent.py](examples/langchain_agent.py)** — LangChain with bound tools
-- **[crewai_agent.py](examples/crewai_agent.py)** — CrewAI research crew
-- **[agent_with_tools.py](examples/agent_with_tools.py)** — Full tool loop (agent calls tools, gets results, responds)
+| File | Description |
+|------|-------------|
+| [echo_agent.py](examples/echo_agent.py) | Minimal A2A agent (no LLM) |
+| [streaming_agent.py](examples/streaming_agent.py) | SSE streaming |
+| [tool_agent.py](examples/tool_agent.py) | `@tool` decorator demo |
+| [openai_agent.py](examples/openai_agent.py) | OpenAI GPT-4o-mini with tools |
+| [anthropic_agent.py](examples/anthropic_agent.py) | Anthropic Claude |
+| [langchain_agent.py](examples/langchain_agent.py) | LangChain via AgentProtocol |
+| [crewai_agent.py](examples/crewai_agent.py) | CrewAI via AgentProtocol |
+| [agent_with_tools.py](examples/agent_with_tools.py) | Multi-tool agent |
+| [memory_agent.py](examples/memory_agent.py) | Redis-backed session memory |
+| [mcp_agent.py](examples/mcp_agent.py) | MCP filesystem server |
+| [rag_agent.py](examples/rag_agent.py) | RAG with LightRAG |
 
 ## Requirements
 
 - Python 3.12+
 - `pydantic >= 2.7`
+- Provider extras: `[openai]`, `[anthropic]`, `[gemini]`
 - `[serve]` extra: `fastapi`, `uvicorn`, `sse-starlette`
+- `[memory]` extra: `redis`
+- `[mcp]` extra: `mcp`
 
 ## License
 

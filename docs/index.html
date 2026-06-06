@@ -4,613 +4,251 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Agentinc SDK — Developer Documentation</title>
+  <link id="site-favicon" rel="icon" type="image/svg+xml" href="images/logo_white.svg" />
+  <script>
+    (function () {
+      try {
+        const saved = localStorage.getItem('agentinc-docs-theme');
+        const theme = saved === 'light' || saved === 'dark' ? saved
+          : (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.dataset.theme = theme;
+        const fav = document.getElementById('site-favicon');
+        if (fav) fav.href = theme === 'light' ? 'images/logo.svg' : 'images/logo_white.svg';
+      } catch (_) { document.documentElement.dataset.theme = 'dark'; }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" />
   <style>
-    /* ── Reset & Variables ── */
-    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
     :root {
-      --bg-root:     #0B1120;
-      --bg-sidebar:  #0F172A;
-      --bg-card:     #1E293B;
-      --bg-code:     #111827;
-      --bg-inline:   #1E293B;
-      --border:      #1E293B;
-      --border-lit:  #334155;
-      --text:        #E2E8F0;
-      --text-muted:  #94A3B8;
-      --text-heading:#F8FAFC;
-      --accent:      #22C55E;
-      --accent-dim:  #16A34A;
-      --accent-glow: rgba(34,197,94,0.12);
-      --purple:      #A78BFA;
-      --blue:        #60A5FA;
-      --orange:      #FB923C;
-      --pink:        #F472B6;
-      --cyan:        #22D3EE;
-      --yellow:      #FACC15;
-      --font-body:   'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      --font-mono:   'JetBrains Mono', 'Fira Code', monospace;
-      --sidebar-w:   280px;
-      --topbar-h:    0px;
+      --bg-root:#050505; --bg-sidebar:#0a0a0a; --bg-card:#111111; --bg-code:#0d0d0d; --bg-inline:#151515;
+      --border:#262626; --border-lit:#3b3b3b; --text:#f5f5f5; --text-muted:#b5b5b5; --text-heading:#ffffff;
+      --accent:#ffffff; --accent-glow:rgba(255,255,255,0.08);
+      --font-body:'Fira Code',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      --font-mono:'Fira Code',ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      --sidebar-w:280px; --header-h:68px; --topbar-bg:#000000; --topbar-search-bg:#0e0e0e;
+    }
+    html { scroll-behavior:smooth; scroll-padding-top:24px; }
+    body { font-family:var(--font-body); background:var(--bg-root); color:var(--text); line-height:1.7; font-size:15px; -webkit-font-smoothing:antialiased; }
+    html[data-theme="dark"]  { color-scheme:dark; }
+    html[data-theme="light"] {
+      color-scheme:light; --bg-root:#f5f5f5; --bg-sidebar:#ececec; --bg-card:#ffffff; --bg-code:#f0f0f0;
+      --bg-inline:#e4e4e4; --border:#cfcfcf; --border-lit:#a9a9a9; --text:#111111; --text-muted:#4f4f4f;
+      --text-heading:#000000; --accent:#000000; --accent-glow:rgba(0,0,0,0.06);
+      --topbar-bg:#f0f0f0; --topbar-search-bg:#ffffff;
     }
 
-    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    .sidebar { position:fixed; top:0; left:0; width:var(--sidebar-w); height:100vh; background:var(--bg-sidebar); border-right:1px solid var(--border); overflow-y:auto; z-index:50; display:flex; flex-direction:column; transition:transform .3s ease; }
+    .sidebar-header { height:var(--header-h); padding:0 20px; border-bottom:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; }
+    .sidebar-logo { display:flex; align-items:center; gap:10px; text-decoration:none; }
+    .sidebar-logo-icon { width:32px; height:32px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+    .sidebar-logo-icon img { width:20px; height:20px; display:block; }
+    .sidebar-logo-text { font-weight:700; font-size:17px; color:var(--text-heading); letter-spacing:-.02em; }
+    .sidebar-version { font-size:11px; color:var(--accent); background:var(--accent-glow); padding:2px 8px; border-radius:20px; margin-left:6px; font-weight:600; }
+    .sidebar-nav { padding:16px 0; flex:1; overflow-y:auto; }
+    .sidebar-section { padding:0 12px; margin-bottom:8px; }
+    .sidebar-section-title { font-size:11px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.08em; padding:8px 12px 6px; }
+    .sidebar-link { display:block; padding:6px 12px; border-radius:6px; color:var(--text-muted); text-decoration:none; font-size:13.5px; transition:all .15s ease; cursor:pointer; }
+    .sidebar-link:hover { color:var(--text); background:rgba(255,255,255,.04); }
+    .sidebar-link.active { color:#bd93f9; background:rgba(189,147,249,.08); }
+    .sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); flex-shrink:0; }
+    .sidebar-footer a { color:var(--text-muted); text-decoration:none; font-size:12px; display:flex; align-items:center; gap:6px; transition:color .15s; }
+    .sidebar-footer a:hover { color:var(--text); }
 
-    body {
-      font-family: var(--font-body);
-      background: var(--bg-root);
-      color: var(--text);
-      line-height: 1.7;
-      font-size: 15px;
-      -webkit-font-smoothing: antialiased;
-    }
+    .mobile-toggle { display:none; position:fixed; top:16px; left:16px; z-index:60; width:40px; height:40px; background:var(--bg-card); border:1px solid var(--border-lit); border-radius:8px; color:var(--text); cursor:pointer; align-items:center; justify-content:center; }
+    .mobile-toggle svg { width:20px; height:20px; }
+    .overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:40; }
 
-    /* ── Sidebar ── */
-    .sidebar {
-      position: fixed;
-      top: 0; left: 0;
-      width: var(--sidebar-w);
-      height: 100vh;
-      background: var(--bg-sidebar);
-      border-right: 1px solid var(--border);
-      overflow-y: auto;
-      z-index: 50;
-      display: flex;
-      flex-direction: column;
-      transition: transform 0.3s ease;
-    }
+    .main { margin-left:var(--sidebar-w); min-height:100vh; padding-top:var(--header-h); }
+    .topbar { position:fixed; top:0; z-index:30; left:var(--sidebar-w); right:0; height:var(--header-h); background:var(--topbar-bg); border-bottom:1px solid var(--border); padding:0 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .topbar-actions { display:flex; align-items:center; gap:10px; flex-shrink:0; }
+    .topbar-search { display:flex; align-items:center; gap:10px; flex:1; max-width:520px; min-width:0; }
+    .topbar-search svg { width:16px; height:16px; flex-shrink:0; color:var(--text-muted); }
+    .topbar-search input { width:100%; height:40px; border:1px solid var(--border-lit); border-radius:999px; background:var(--topbar-search-bg); color:var(--text); font:inherit; padding:0 14px; outline:none; }
+    .topbar-search input::placeholder { color:var(--text-muted); }
+    .topbar-search input:focus { border-color:#bd93f9; box-shadow:0 0 0 2px rgba(189,147,249,.12); }
+    .gh-star-btn { display:inline-flex; align-items:center; gap:8px; padding:7px 14px; background:var(--bg-card); border:1px solid var(--border-lit); border-radius:8px; color:var(--text); text-decoration:none; font-size:13px; font-weight:500; font-family:var(--font-body); transition:all .2s ease; cursor:pointer; flex-shrink:0; }
+    .gh-star-btn:hover { background:rgba(255,255,255,.08); color:var(--text-heading); }
+    .gh-star-btn svg { flex-shrink:0; }
+    .topbar-logo-btn { width:40px; height:40px; padding:0; justify-content:center; background:var(--bg-card); border:1px solid var(--border-lit); border-radius:8px; display:inline-flex; align-items:center; flex-shrink:0; }
+    .topbar-logo { height:22px; width:auto; display:block; }
+    html[data-theme="dark"] .topbar-logo { filter:brightness(0) invert(1); }
+    .theme-toggle-btn { width:40px; height:40px; padding:0; justify-content:center; }
+    .theme-toggle-btn svg { width:16px; height:16px; flex-shrink:0; }
 
-    .sidebar-header {
-      padding: 24px 20px 16px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
+    .content { max-width:820px; margin:0 auto; padding:48px 40px 120px; }
+    .hero { padding:16px 0 48px; border-bottom:1px solid var(--border); margin-bottom:48px; }
+    .hero-badge { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:#50fa7b; background:rgba(80,250,123,.08); padding:4px 12px; border-radius:20px; margin-bottom:16px; border:1px solid rgba(80,250,123,.2); }
+    .hero h1 { font-size:38px; font-weight:700; color:var(--text-heading); letter-spacing:-.03em; line-height:1.15; margin-bottom:12px; }
+    .hero h1 span { color:#bd93f9; }
+    .hero-sub { font-size:17px; color:var(--text-muted); line-height:1.6; max-width:600px; }
+    .hero-install { margin-top:24px; display:flex; align-items:center; gap:10px; }
+    .hero-install code { font-family:var(--font-mono); font-size:14px; background:var(--bg-code); color:#f1fa8c; padding:10px 16px; border-radius:8px; border:1px solid var(--border); }
+    .copy-btn { width:36px; height:36px; background:var(--bg-card); border:1px solid var(--border-lit); border-radius:6px; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+    .copy-btn:hover { color:var(--text); border-color:#bd93f9; }
+    .copy-btn svg { width:16px; height:16px; }
 
-    .sidebar-logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
-
-    .sidebar-logo-icon {
-      width: 32px; height: 32px;
-      background: linear-gradient(135deg, var(--accent), var(--cyan));
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    .sidebar-logo-icon svg { width: 18px; height: 18px; }
-
-    .sidebar-logo-text {
-      font-weight: 700;
-      font-size: 17px;
-      color: var(--text-heading);
-      letter-spacing: -0.02em;
-    }
-
-    .sidebar-version {
-      font-size: 11px;
-      color: var(--accent);
-      background: var(--accent-glow);
-      padding: 2px 8px;
-      border-radius: 20px;
-      margin-left: 6px;
-      font-weight: 600;
-    }
-
-    .sidebar-nav { padding: 16px 0; flex: 1; overflow-y: auto; }
-
-    .sidebar-section {
-      padding: 0 12px;
-      margin-bottom: 8px;
-    }
-
-    .sidebar-section-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      padding: 8px 12px 6px;
-    }
-
-    .sidebar-link {
-      display: block;
-      padding: 6px 12px;
-      border-radius: 6px;
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 13.5px;
-      font-weight: 450;
-      transition: all 0.15s ease;
-      cursor: pointer;
-    }
-
-    .sidebar-link:hover {
-      color: var(--text);
-      background: rgba(255,255,255,0.04);
-    }
-
-    .sidebar-link.active {
-      color: var(--accent);
-      background: var(--accent-glow);
-    }
-
-    .sidebar-footer {
-      padding: 16px 20px;
-      border-top: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-
-    .sidebar-footer a {
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: color 0.15s;
-    }
-
-    .sidebar-footer a:hover { color: var(--text); }
-
-    /* ── Mobile toggle ── */
-    .mobile-toggle {
-      display: none;
-      position: fixed;
-      top: 16px; left: 16px;
-      z-index: 60;
-      width: 40px; height: 40px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-lit);
-      border-radius: 8px;
-      color: var(--text);
-      cursor: pointer;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .mobile-toggle svg { width: 20px; height: 20px; }
-
-    .overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      z-index: 40;
-    }
-
-    /* ── Main content ── */
-    .main {
-      margin-left: var(--sidebar-w);
-      min-height: 100vh;
-    }
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 30;
-      background: rgba(11,17,32,0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      padding: 10px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    .gh-star-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 14px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-lit);
-      border-radius: 8px;
-      color: var(--text);
-      text-decoration: none;
-      font-size: 13px;
-      font-weight: 500;
-      font-family: var(--font-body);
-      transition: all 0.2s ease;
-      cursor: pointer;
-    }
-
-    .gh-star-btn:hover {
-      border-color: var(--yellow);
-      background: rgba(250,204,21,0.06);
-      color: var(--text-heading);
-    }
-
-    .gh-star-btn svg { flex-shrink: 0; }
-
-    .content {
-      max-width: 820px;
-      margin: 0 auto;
-      padding: 48px 40px 120px;
-    }
-
-    /* ── Hero ── */
-    .hero {
-      padding: 16px 0 48px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 48px;
-    }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent);
-      background: var(--accent-glow);
-      padding: 4px 12px;
-      border-radius: 20px;
-      margin-bottom: 16px;
-      border: 1px solid rgba(34,197,94,0.2);
-    }
-
-    .hero h1 {
-      font-size: 38px;
-      font-weight: 700;
-      color: var(--text-heading);
-      letter-spacing: -0.03em;
-      line-height: 1.15;
-      margin-bottom: 12px;
-    }
-
-    .hero h1 span { color: var(--accent); }
-
-    .hero-sub {
-      font-size: 17px;
-      color: var(--text-muted);
-      line-height: 1.6;
-      max-width: 600px;
-    }
-
-    .hero-install {
-      margin-top: 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .hero-install code {
-      font-family: var(--font-mono);
-      font-size: 14px;
-      background: var(--bg-code);
-      color: var(--accent);
-      padding: 10px 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-    }
-
-    .copy-btn {
-      width: 36px; height: 36px;
-      background: var(--bg-card);
-      border: 1px solid var(--border-lit);
-      border-radius: 6px;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.15s;
-    }
-
-    .copy-btn:hover { color: var(--text); border-color: var(--accent); }
-
-    .copy-btn svg { width: 16px; height: 16px; }
-
-    /* ── Section headings ── */
-    .section { margin-bottom: 56px; }
-
-    .section h2 {
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--text-heading);
-      letter-spacing: -0.02em;
-      margin-bottom: 8px;
-      padding-top: 8px;
-    }
-
-    .section h3 {
-      font-size: 19px;
-      font-weight: 600;
-      color: var(--text-heading);
-      margin: 32px 0 10px;
-    }
-
-    .section h4 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--text-heading);
-      margin: 20px 0 8px;
-    }
-
-    .section-desc {
-      color: var(--text-muted);
-      margin-bottom: 24px;
-      font-size: 15px;
-    }
-
-    .section p {
-      margin-bottom: 12px;
-    }
+    .section { margin-bottom:56px; }
+    .section h2 { font-size:26px; font-weight:700; color:var(--text-heading); letter-spacing:-.02em; margin-bottom:8px; padding-top:8px; }
+    .section h3 { font-size:19px; font-weight:600; color:var(--text-heading); margin:32px 0 10px; }
+    .section h4 { font-size:15px; font-weight:600; color:var(--text-heading); margin:20px 0 8px; }
+    .section-desc { color:var(--text-muted); margin-bottom:24px; font-size:15px; }
+    .section p { margin-bottom:12px; }
 
     /* ── Code blocks ── */
-    pre {
-      background: var(--bg-code);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 0;
-      margin: 16px 0;
-      overflow: hidden;
-      position: relative;
-    }
+    pre { background:var(--bg-code) !important; border:1px solid var(--border); border-radius:10px; padding:0 !important; margin:16px 0; overflow:hidden; position:relative; }
+    .code-header { display:flex; align-items:center; justify-content:space-between; padding:8px 16px; background:rgba(255,255,255,.02); border-bottom:1px solid var(--border); font-family:var(--font-mono); font-size:12px; color:var(--text-muted); }
+    .copy-code { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:11px; font-family:var(--font-body); padding:2px 8px; border-radius:4px; transition:all .15s; }
+    .copy-code:hover { color:var(--text); background:rgba(255,255,255,.06); }
+    pre code { display:block !important; padding:16px 20px !important; font-family:var(--font-mono) !important; font-size:13.5px !important; line-height:1.65 !important; overflow-x:auto; background:transparent !important; text-shadow:none !important; }
+    :not(pre) > code { font-family:var(--font-mono); font-size:.88em; background:var(--bg-inline); color:#f1fa8c; padding:2px 7px; border-radius:5px; border:1px solid var(--border); }
 
-    pre .code-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 16px;
-      background: rgba(255,255,255,0.02);
-      border-bottom: 1px solid var(--border);
-      font-family: var(--font-mono);
-      font-size: 12px;
-      color: var(--text-muted);
-    }
+    /* ── Prism theme (Dracula) ── */
+    .token.comment, .token.prolog, .token.doctype, .token.cdata { color:#6272a4; font-style:italic; }
+    .token.punctuation { color:#f8f8f2; }
+    .token.property, .token.tag, .token.constant, .token.symbol, .token.deleted { color:#ff79c6; }
+    .token.boolean, .token.number { color:#bd93f9; }
+    .token.selector, .token.attr-name, .token.string, .token.char, .token.builtin, .token.inserted { color:#f1fa8c; }
+    .token.operator, .token.entity, .token.url { color:#ff79c6; }
+    .token.atrule, .token.attr-value, .token.keyword { color:#ff79c6; }
+    .token.function, .token.class-name { color:#50fa7b; }
+    .token.regex, .token.important, .token.variable { color:#ffb86c; }
+    .token.important, .token.bold { font-weight:bold; }
+    .token.italic { font-style:italic; }
+    .token.decorator { color:#50fa7b; }
+    .token.parameter { color:#ffb86c; }
+    /* bash specifics */
+    .language-bash .token.function { color:#8be9fd; }
+    .language-bash .token.string { color:#f1fa8c; }
+    /* json specifics */
+    .language-json .token.property { color:#8be9fd; }
+    .language-json .token.string { color:#f1fa8c; }
+    .language-json .token.boolean, .language-json .token.number, .language-json .token.null { color:#bd93f9; }
 
-    pre .code-header .copy-code {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-size: 11px;
-      font-family: var(--font-body);
-      padding: 2px 8px;
-      border-radius: 4px;
-      transition: all 0.15s;
-    }
-
-    pre .code-header .copy-code:hover {
-      color: var(--text);
-      background: rgba(255,255,255,0.06);
-    }
-
-    pre code {
-      display: block;
-      padding: 16px 20px;
-      font-family: var(--font-mono);
-      font-size: 13.5px;
-      line-height: 1.65;
-      overflow-x: auto;
-      color: var(--text);
-    }
-
-    /* ── Inline code ── */
-    :not(pre) > code {
-      font-family: var(--font-mono);
-      font-size: 0.88em;
-      background: var(--bg-inline);
-      color: var(--pink);
-      padding: 2px 7px;
-      border-radius: 5px;
-      border: 1px solid var(--border);
-    }
-
-    /* ── Syntax highlighting ── */
-    .kw   { color: var(--purple); }
-    .fn   { color: var(--blue); }
-    .str  { color: var(--accent); }
-    .cls  { color: var(--cyan); }
-    .dec  { color: var(--yellow); }
-    .cmt  { color: #4B5563; font-style: italic; }
-    .typ  { color: var(--orange); }
-    .num  { color: var(--orange); }
-    .op   { color: var(--text-muted); }
-    .param{ color: var(--orange); }
-    .self { color: var(--pink); font-style: italic; }
-    .none { color: var(--orange); }
+    /* ── Light mode Prism overrides (Atom One Light) ── */
+    html[data-theme="light"] .token.comment,
+    html[data-theme="light"] .token.prolog,
+    html[data-theme="light"] .token.doctype,
+    html[data-theme="light"] .token.cdata { color:#a0a1a7; }
+    html[data-theme="light"] .token.punctuation { color:#383a42; }
+    html[data-theme="light"] .token.property,
+    html[data-theme="light"] .token.tag,
+    html[data-theme="light"] .token.constant,
+    html[data-theme="light"] .token.symbol,
+    html[data-theme="light"] .token.deleted { color:#e45649; }
+    html[data-theme="light"] .token.boolean,
+    html[data-theme="light"] .token.number { color:#986801; }
+    html[data-theme="light"] .token.selector,
+    html[data-theme="light"] .token.attr-name,
+    html[data-theme="light"] .token.string,
+    html[data-theme="light"] .token.char,
+    html[data-theme="light"] .token.builtin,
+    html[data-theme="light"] .token.inserted { color:#50a14f; }
+    html[data-theme="light"] .token.operator,
+    html[data-theme="light"] .token.entity,
+    html[data-theme="light"] .token.url { color:#a626a4; }
+    html[data-theme="light"] .token.atrule,
+    html[data-theme="light"] .token.attr-value,
+    html[data-theme="light"] .token.keyword { color:#a626a4; }
+    html[data-theme="light"] .token.function,
+    html[data-theme="light"] .token.class-name,
+    html[data-theme="light"] .token.decorator { color:#4078f2; }
+    html[data-theme="light"] .token.regex,
+    html[data-theme="light"] .token.important,
+    html[data-theme="light"] .token.variable,
+    html[data-theme="light"] .token.parameter { color:#c18401; }
+    html[data-theme="light"] .language-bash .token.function { color:#0184bc; }
+    html[data-theme="light"] .language-bash .token.string { color:#50a14f; }
+    html[data-theme="light"] .language-json .token.property { color:#0184bc; }
+    html[data-theme="light"] .language-json .token.string { color:#50a14f; }
+    html[data-theme="light"] .language-json .token.boolean,
+    html[data-theme="light"] .language-json .token.number,
+    html[data-theme="light"] .language-json .token.null { color:#986801; }
+    /* Light mode inline code */
+    html[data-theme="light"] :not(pre) > code { color:#a626a4; background:#f0eaf8; border-color:#d8c8ed; }
+    html[data-theme="light"] .hero-install code { color:#a626a4; background:#f0eaf8; border-color:#d8c8ed; }
 
     /* ── API Cards ── */
-    .api-card {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      margin: 16px 0;
-      transition: border-color 0.2s;
-    }
-
-    .api-card:hover { border-color: var(--border-lit); }
-
-    .api-card-header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-
-    .api-badge {
-      font-family: var(--font-mono);
-      font-size: 11px;
-      font-weight: 600;
-      padding: 3px 8px;
-      border-radius: 5px;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-
-    .badge-class    { background: rgba(34,211,238,0.12); color: var(--cyan); }
-    .badge-protocol { background: rgba(167,139,250,0.12); color: var(--purple); }
-    .badge-function { background: rgba(96,165,250,0.12);  color: var(--blue); }
-    .badge-model    { background: rgba(251,146,60,0.12);  color: var(--orange); }
-    .badge-decorator{ background: rgba(250,204,21,0.12);  color: var(--yellow); }
-
-    .api-card-name {
-      font-family: var(--font-mono);
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-heading);
-    }
-
-    .api-card p {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin-bottom: 8px;
-    }
+    .api-card { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:24px; margin:16px 0; transition:border-color .2s; }
+    .api-card:hover { border-color:var(--border-lit); }
+    .api-card-header { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+    .api-badge { font-family:var(--font-mono); font-size:11px; font-weight:600; padding:3px 8px; border-radius:5px; text-transform:uppercase; letter-spacing:.04em; }
+    .badge-class      { background:rgba(80,250,123,.1);  color:#50fa7b; }
+    .badge-protocol   { background:rgba(189,147,249,.1); color:#bd93f9; }
+    .badge-function   { background:rgba(139,233,253,.1); color:#8be9fd; }
+    .badge-model      { background:rgba(255,184,108,.1); color:#ffb86c; }
+    .badge-decorator  { background:rgba(241,250,140,.1); color:#f1fa8c; }
+    html[data-theme="light"] .badge-decorator { background:rgba(166,38,164,.1); color:#a626a4; }
+    /* Light mode callout overrides */
+    html[data-theme="light"] .callout-info { background:rgba(1,132,188,.06); border-color:rgba(1,132,188,.25); color:#0184bc; }
+    html[data-theme="light"] .callout-tip  { background:rgba(0,122,64,.06);  border-color:rgba(0,122,64,.25);  color:#007a40; }
+    html[data-theme="light"] .callout-warn { background:rgba(192,80,0,.06);  border-color:rgba(192,80,0,.25);  color:#c05000; }
+    html[data-theme="light"] .badge-class    { background:rgba(0,122,64,.08);    color:#007a40; }
+    html[data-theme="light"] .badge-function { background:rgba(1,132,188,.08);   color:#0184bc; }
+    html[data-theme="light"] .badge-protocol { background:rgba(124,58,237,.08);  color:#7c3aed; }
+    html[data-theme="light"] .badge-model    { background:rgba(192,80,0,.08);    color:#c05000; }
+    html[data-theme="light"] .badge-deprecated { background:rgba(180,0,0,.08);   color:#b40000; border-color:rgba(180,0,0,.2); }
+    html[data-theme="light"] .hero-badge { background:rgba(0,122,64,.06); border-color:rgba(0,122,64,.2); color:#007a40; }
+    html[data-theme="light"] .hero h1 span { color:#7c3aed; }
+    html[data-theme="light"] .sidebar-link.active { color:#7c3aed; background:rgba(124,58,237,.06); }
+    .badge-deprecated { background:rgba(255,85,85,.1);   color:#ff5555; border:1px solid rgba(255,85,85,.3); }
+    .api-card-name { font-family:var(--font-mono); font-size:16px; font-weight:600; color:var(--text-heading); }
+    .api-card p { color:var(--text-muted); font-size:14px; margin-bottom:8px; }
 
     /* ── Tables ── */
-    .table-wrap {
-      overflow-x: auto;
-      margin: 16px 0;
-      border-radius: 10px;
-      border: 1px solid var(--border);
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    thead { background: rgba(255,255,255,0.03); }
-
-    th {
-      text-align: left;
-      padding: 10px 16px;
-      font-weight: 600;
-      color: var(--text-muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      border-bottom: 1px solid var(--border);
-    }
-
-    td {
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      color: var(--text);
-    }
-
-    tr:last-child td { border-bottom: none; }
-
-    td code {
-      font-size: 12.5px;
-    }
+    .table-wrap { overflow-x:auto; margin:16px 0; border-radius:10px; border:1px solid var(--border); }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    thead { background:rgba(255,255,255,.03); }
+    th { text-align:left; padding:10px 16px; font-weight:600; color:var(--text-muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; border-bottom:1px solid var(--border); }
+    td { padding:10px 16px; border-bottom:1px solid var(--border); color:var(--text); }
+    tr:last-child td { border-bottom:none; }
+    td code { font-size:12.5px; }
 
     /* ── Callouts ── */
-    .callout {
-      border-radius: 10px;
-      padding: 16px 20px;
-      margin: 16px 0;
-      display: flex;
-      gap: 12px;
-      font-size: 14px;
-      line-height: 1.6;
-    }
-
-    .callout svg { flex-shrink: 0; margin-top: 2px; }
-
-    .callout-info {
-      background: rgba(96,165,250,0.08);
-      border: 1px solid rgba(96,165,250,0.2);
-      color: var(--blue);
-    }
-
-    .callout-warn {
-      background: rgba(250,204,21,0.08);
-      border: 1px solid rgba(250,204,21,0.2);
-      color: var(--yellow);
-    }
-
-    .callout-tip {
-      background: rgba(34,197,94,0.08);
-      border: 1px solid rgba(34,197,94,0.2);
-      color: var(--accent);
-    }
+    .callout { border-radius:10px; padding:16px 20px; margin:16px 0; display:flex; gap:12px; font-size:14px; line-height:1.6; }
+    .callout svg { flex-shrink:0; margin-top:2px; }
+    .callout-info { background:rgba(139,233,253,.06); border:1px solid rgba(139,233,253,.2); color:#8be9fd; }
+    .callout-warn { background:rgba(255,184,108,.06); border:1px solid rgba(255,184,108,.2); color:#ffb86c; }
+    .callout-tip  { background:rgba(80,250,123,.06);  border:1px solid rgba(80,250,123,.2);  color:#50fa7b; }
 
     /* ── Feature grid ── */
-    .feature-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      margin: 20px 0;
+    .feature-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:20px 0; }
+    .feature-item { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:18px; transition:border-color .2s; }
+    .feature-item:hover { border-color:var(--border-lit); }
+    .feature-item-title { font-weight:600; font-size:14px; color:var(--text-heading); margin-bottom:4px; }
+    .feature-item-desc { font-size:13px; color:var(--text-muted); line-height:1.5; }
+
+    @media (max-width:900px) {
+      .sidebar { transform:translateX(-100%); } .sidebar.open { transform:translateX(0); }
+      .mobile-toggle { display:flex; } .overlay.open { display:block; }
+      .main { margin-left:0; padding-top:var(--header-h); }
+      .content { padding:20px 20px 100px; }
+      .topbar { left:0; padding:0 16px; } .topbar-search { max-width:none; }
+      .hero h1 { font-size:28px; } .feature-grid { grid-template-columns:1fr; }
     }
-
-    .feature-item {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 18px;
-      transition: border-color 0.2s;
-    }
-
-    .feature-item:hover { border-color: var(--border-lit); }
-
-    .feature-item-title {
-      font-weight: 600;
-      font-size: 14px;
-      color: var(--text-heading);
-      margin-bottom: 4px;
-    }
-
-    .feature-item-desc {
-      font-size: 13px;
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    /* ── Responsive ── */
-    @media (max-width: 900px) {
-      .sidebar { transform: translateX(-100%); }
-      .sidebar.open { transform: translateX(0); }
-      .mobile-toggle { display: flex; }
-      .overlay.open { display: block; }
-      .main { margin-left: 0; }
-      .content { padding: 72px 20px 100px; }
-      .topbar { padding: 10px 20px; }
-      .hero h1 { font-size: 28px; }
-      .feature-grid { grid-template-columns: 1fr; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { transition-duration: 0.01ms !important; }
-      html { scroll-behavior: auto; }
-    }
-
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: var(--border-lit); border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { transition-duration:.01ms !important; } html { scroll-behavior:auto; } }
+    ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border-lit); border-radius:3px; } ::-webkit-scrollbar-thumb:hover { background:#5a5a5a; }
   </style>
 </head>
 <body>
 
-<!-- Mobile toggle -->
 <button class="mobile-toggle" onclick="toggleSidebar()" aria-label="Toggle navigation">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
 </button>
 <div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
 
-<!-- Sidebar -->
 <nav class="sidebar" id="sidebar">
   <div class="sidebar-header">
     <a href="#" class="sidebar-logo">
-      <div class="sidebar-logo-icon">
-        <svg viewBox="0 0 24 24" fill="none" stroke="#0B1120" stroke-width="2.5" stroke-linecap="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-      </div>
+      <div class="sidebar-logo-icon"><img id="sidebar-logo-image" src="images/logo_white.svg" alt="" aria-hidden="true"/></div>
       <span class="sidebar-logo-text">agentinc-sdk</span>
-      <span class="sidebar-version">v0.1.0</span>
+      <span class="sidebar-version">v0.2.0</span>
     </a>
   </div>
-
   <div class="sidebar-nav">
     <div class="sidebar-section">
       <div class="sidebar-section-title">Getting Started</div>
@@ -621,12 +259,16 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">API Reference</div>
+      <a href="#agent-class" class="sidebar-link">Agent</a>
+      <a href="#model-config" class="sidebar-link">ModelConfig</a>
+      <a href="#memory-config" class="sidebar-link">MemoryConfig</a>
+      <a href="#mcp-config" class="sidebar-link">MCPConfig</a>
       <a href="#agent-protocol" class="sidebar-link">AgentProtocol</a>
       <a href="#tool-protocol" class="sidebar-link">ToolProtocol</a>
       <a href="#schemas" class="sidebar-link">Schemas</a>
       <a href="#tool-decorator" class="sidebar-link">@tool Decorator</a>
       <a href="#tool-wrapper" class="sidebar-link">ToolWrapper</a>
-      <a href="#raw-adapter" class="sidebar-link">RawAdapter</a>
+      <a href="#raw-adapter" class="sidebar-link">RawAdapter ⚠</a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">Serving</div>
@@ -638,16 +280,17 @@
       <div class="sidebar-section-title">Examples</div>
       <a href="#example-openai" class="sidebar-link">OpenAI Agent</a>
       <a href="#example-anthropic" class="sidebar-link">Anthropic Agent</a>
-      <a href="#example-langchain" class="sidebar-link">LangChain Agent</a>
-      <a href="#example-crewai" class="sidebar-link">CrewAI Agent</a>
-      <a href="#example-tools" class="sidebar-link">Agent with Tools</a>
+      <a href="#example-memory" class="sidebar-link">Session Memory</a>
+      <a href="#example-mcp" class="sidebar-link">MCP Server</a>
+      <a href="#example-langchain" class="sidebar-link">LangChain</a>
+      <a href="#example-crewai" class="sidebar-link">CrewAI</a>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">More</div>
+      <a href="#marketplace" class="sidebar-link">Ship to Marketplace</a>
       <a href="#exports" class="sidebar-link">All Exports</a>
     </div>
   </div>
-
   <div class="sidebar-footer">
     <a href="https://github.com/agentinc/sdk" target="_blank" rel="noopener">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -656,776 +299,612 @@
   </div>
 </nav>
 
-<!-- Main Content -->
 <main class="main">
   <div class="topbar">
-    <a href="https://github.com/agentinc/sdk" target="_blank" rel="noopener" class="gh-star-btn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-      Star on GitHub
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
-    </a>
+    <label class="topbar-search" for="docs-search" aria-label="Search documentation">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="docs-search" type="search" placeholder="Search docs" autocomplete="off"/>
+    </label>
+    <div class="topbar-actions">
+      <button class="gh-star-btn theme-toggle-btn" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+        <svg id="theme-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="m4.22 4.22 1.42 1.42"/><path d="m18.36 18.36 1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="m4.22 19.78 1.42-1.42"/><path d="m18.36 5.64 1.42-1.42"/></svg>
+      </button>
+      <a href="https://github.com/agentinc/sdk" target="_blank" rel="noopener" class="gh-star-btn">
+        <i class="fa-brands fa-github" style="font-size:15px;"></i>
+        Star on GitHub
+      </a>
+      <div class="topbar-logo-btn">
+        <img src="images/agentinc/logo.svg" alt="Agentinc" class="topbar-logo" aria-hidden="true" />
+      </div>
+    </div>
   </div>
+
   <div class="content">
 
-    <!-- Hero -->
     <div class="hero" id="top">
       <div class="hero-badge">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-        Open Source SDK
+        Simple agent SDK
       </div>
-      <h1>Build agents.<br/><span>Ship to the marketplace.</span></h1>
-      <p class="hero-sub">
-        The Agentinc SDK is the developer interface for the Agentinc agent marketplace.
-        Define agents with any LLM framework, wrap them in a universal protocol, and serve them
-        over A2A &mdash; all with a single package.
-      </p>
+      <h1>Your agent,<br/><span>ready to ship.</span></h1>
+      <p class="hero-sub">Any model. Built-in tools, memory, and MCP. Serve locally or publish to the Agentinc marketplace — all from one package.</p>
       <div class="hero-install">
-        <code id="install-cmd">pip install agentinc-sdk</code>
-        <button class="copy-btn" onclick="copyText('pip install agentinc-sdk', this)" aria-label="Copy install command">
+        <code id="install-cmd">pip install "agentinc-sdk[openai,serve]"</code>
+        <button class="copy-btn" onclick="copyText('pip install &quot;agentinc-sdk[openai,serve]&quot;', this)" aria-label="Copy install command">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
         </button>
       </div>
     </div>
 
-    <!-- Installation -->
     <div class="section" id="installation">
       <h2>Installation</h2>
-      <p class="section-desc">Install the SDK with pip or uv. The only required dependency is Pydantic.</p>
-
-      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="cmt"># Core SDK (pydantic only)</span>
+      <p class="section-desc">Install the SDK with pip or uv. Core depends only on Pydantic — extras add provider clients and the A2A server.</p>
+      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-bash"># Core (pydantic only)
 pip install agentinc-sdk
 
-<span class="cmt"># With A2A server support (adds FastAPI + Uvicorn)</span>
-pip install agentinc-sdk[serve]
+# With OpenAI + A2A server
+pip install "agentinc-sdk[openai,serve]"
 
-<span class="cmt"># Development</span>
-pip install agentinc-sdk[dev]</code></pre>
+# With Anthropic + A2A server
+pip install "agentinc-sdk[anthropic,serve]"
 
+# Everything
+pip install "agentinc-sdk[all]"</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Extra</th><th>Installs</th><th>Use for</th></tr></thead>
+        <tbody>
+          <tr><td><code>openai</code></td><td>openai&gt;=1.0</td><td>OpenAI + any OpenAI-compatible endpoint (DeepSeek, Groq, Ollama…)</td></tr>
+          <tr><td><code>anthropic</code></td><td>anthropic&gt;=0.25</td><td>Anthropic Claude models</td></tr>
+          <tr><td><code>gemini</code></td><td>google-genai&gt;=1.0</td><td>Google Gemini models</td></tr>
+          <tr><td><code>memory</code></td><td>redis&gt;=5.0</td><td>Redis-backed session memory</td></tr>
+          <tr><td><code>mcp</code></td><td>mcp&gt;=1.0</td><td>MCP server connections</td></tr>
+          <tr><td><code>serve</code></td><td>fastapi, uvicorn, sse-starlette</td><td>A2A HTTP server</td></tr>
+          <tr><td><code>all</code></td><td>all of the above</td><td>Full install</td></tr>
+        </tbody>
+      </table></div>
       <div class="callout callout-info">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-        <span>Requires <strong>Python 3.12+</strong>. The SDK has zero platform dependencies &mdash; it never imports from internal agentinc packages.</span>
+        <span>Requires <strong>Python 3.12+</strong>. Provider libraries are lazy-imported — missing extras raise a clear <code>ImportError</code> with install instructions.</span>
       </div>
     </div>
 
-    <!-- Agent Skill -->
     <div class="section" id="skill">
       <h2>Agent Skill</h2>
-      <p class="section-desc">Install the agentinc-sdk skill so your coding agent understands the SDK and can help you build agents.</p>
-
-      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code>npx skills add agentinc/sdk</code></pre>
-
-      <p>Once installed, your coding agent will automatically use it when you:</p>
-
+      <p class="section-desc">Install the agentinc-sdk skill so your coding agent understands the <code>Agent</code> API and can help you build agents faster.</p>
+      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-bash">npx skills add agentinc/sdk</code></pre>
       <div class="feature-grid">
-        <div class="feature-item">
-          <div class="feature-item-title">Build agents</div>
-          <div class="feature-item-desc">Ask your agent to create an agent with OpenAI, Anthropic, LangChain, or CrewAI and it will use the correct SDK patterns.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">Debug issues</div>
-          <div class="feature-item-desc">Your coding agent knows all RawAdapter signatures, tool schema rules, and A2A endpoint formats.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">Add tools</div>
-          <div class="feature-item-desc">Your coding agent will use <code>@tool</code> correctly with proper type hints and JSON Schema generation.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">Serve &amp; deploy</div>
-          <div class="feature-item-desc">Your coding agent knows <code>create_app()</code> vs <code>serve()</code>, A2A protocol, and how to test with curl.</div>
-        </div>
+        <div class="feature-item"><div class="feature-item-title">Build agents</div><div class="feature-item-desc">Ask your agent to create an <code>Agent()</code> with tools, MCP servers, or memory — it uses current SDK patterns.</div></div>
+        <div class="feature-item"><div class="feature-item-title">Debug issues</div><div class="feature-item-desc">Your coding agent knows the Agent constructor, provider config rules, tool schemas, and A2A formats.</div></div>
+        <div class="feature-item"><div class="feature-item-title">Add tools</div><div class="feature-item-desc">Your coding agent uses <code>@tool</code> correctly with proper type hints and JSON Schema generation.</div></div>
+        <div class="feature-item"><div class="feature-item-title">Serve &amp; deploy</div><div class="feature-item-desc">Your coding agent knows <code>create_app()</code> vs <code>serve()</code>, A2A protocol, and how to test with curl.</div></div>
       </div>
     </div>
 
-    <!-- Quickstart -->
     <div class="section" id="quickstart">
       <h2>Quickstart</h2>
-      <p class="section-desc">Create an agent, wrap it with RawAdapter, and serve it over A2A in under 10 lines.</p>
+      <p class="section-desc">Create an <code>Agent</code>, give it a model and a tool, then serve it over A2A.</p>
+      <pre><div class="code-header">quickstart.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">import os
+from agentinc.sdk import Agent
+from agentinc.sdk.serve import serve
 
-      <pre><div class="code-header">quickstart.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">RawAdapter</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">serve</span>
+def get_weather(city: str) -> str:
+    """Gets the current weather for a city."""
+    return f"72°F and sunny in {city}"
 
-<span class="kw">async def</span> <span class="fn">my_agent</span>(<span class="param">message</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"You said: </span>{message}<span class="str">"</span>
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    tools=[get_weather],
+)
 
-<span class="fn">serve</span>(<span class="cls">RawAdapter</span>(<span class="fn">my_agent</span>), <span class="param">name</span>=<span class="str">"echo"</span>, <span class="param">port</span>=<span class="num">8000</span>)</code></pre>
-
-      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="cmt"># Start the server</span>
+serve(agent, name="my-agent", port=8000)</code></pre>
+      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-bash"># Start the server
 python quickstart.py
 
-<span class="cmt"># Call it</span>
+# Call it
 curl -X POST http://localhost:8000 \
-  -H <span class="str">"Content-Type: application/json"</span> \
-  -d <span class="str">'{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","message":{"role":"user","parts":[{"type":"text","text":"hello"}]}}}'</span></code></pre>
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","message":{"role":"user","parts":[{"type":"text","text":"What is the weather in Paris?"}]}}}'</code></pre>
     </div>
 
-    <!-- Core Concepts -->
     <div class="section" id="concepts">
       <h2>Core Concepts</h2>
       <p class="section-desc">The SDK defines the contract between your agent code and the Agentinc platform.</p>
-
       <div class="feature-grid">
-        <div class="feature-item">
-          <div class="feature-item-title">AgentProtocol</div>
-          <div class="feature-item-desc">The universal agent contract. Implement <code>run()</code> to process input and yield output chunks.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">ToolProtocol</div>
-          <div class="feature-item-desc">Expose functions as tools the agent can call. Define <code>schema()</code> and <code>call()</code>.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">RawAdapter</div>
-          <div class="feature-item-desc">Wraps any callable as an AgentProtocol. Supports sync, async, and streaming functions.</div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-item-title">@tool Decorator</div>
-          <div class="feature-item-desc">Turn any function into a ToolProtocol with auto-generated JSON schema from type hints.</div>
-        </div>
+        <div class="feature-item"><div class="feature-item-title">Agent</div><div class="feature-item-desc">The main class. Wires the provider, tool dispatch loop, session memory, and MCP connections automatically.</div></div>
+        <div class="feature-item"><div class="feature-item-title">AgentProtocol</div><div class="feature-item-desc">Universal agent contract. Implement <code>run()</code> for framework integrations that manage their own LLM calls.</div></div>
+        <div class="feature-item"><div class="feature-item-title">ToolProtocol</div><div class="feature-item-desc">Expose functions as tools the agent can call. Use <code>@tool</code> or pass plain functions to <code>tools=</code>.</div></div>
+        <div class="feature-item"><div class="feature-item-title">@tool Decorator</div><div class="feature-item-desc">Turn any function into a <code>ToolProtocol</code> with auto-generated JSON schema from type hints and docstrings.</div></div>
       </div>
-
       <div class="callout callout-tip">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg>
-        <span>You don't need to implement <code>AgentProtocol</code> directly. Use <code>RawAdapter</code> to wrap any function &mdash; the platform handles the rest.</span>
+        <span>Plain functions passed to <code>Agent(tools=[...])</code> are auto-wrapped — <code>@tool</code> is optional. Use it when you want an explicit name or description.</span>
       </div>
     </div>
 
-    <!-- AgentProtocol -->
+    <div class="section" id="agent-class">
+      <h2>Agent</h2>
+      <p class="section-desc">The main developer-facing class. Implements <code>AgentProtocol</code> — pass it directly to <code>serve()</code>.</p>
+      <div class="api-card">
+        <div class="api-card-header"><span class="api-badge badge-class">Class</span><span class="api-card-name">Agent</span></div>
+        <p>Wires together a provider, tool dispatch loop, optional Redis memory, and optional MCP connections. The tool loop is built-in: the agent calls tools, feeds results back to the LLM, and repeats until a text response is produced.</p>
+      </div>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">Agent(
+    role:    str,                         # system prompt / persona
+    model:   ModelConfig,                 # provider + credentials dict
+    tools:   list[Callable] = [],         # plain functions — auto-wrapped
+    mcps:    list[MCPConfig] = [],        # MCP server connections
+    memory:  MemoryConfig | None = None,  # Redis-backed session memory
+    context: str | None = None,           # extra context appended to system prompt
+    data:    DataConfig | None = None,    # RAG config (reserved)
+)</code></pre>
+    </div>
+
+    <div class="section" id="model-config">
+      <h2>ModelConfig</h2>
+      <p class="section-desc">Provider credentials as a plain dict. Provider auto-detected from model name prefix. When <code>base_url</code> is set, the OpenAI-compatible provider is used regardless of model name.</p>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python"># OpenAI
+{"model": "gpt-4o-mini",       "api_key": "sk-..."}
+
+# Anthropic
+{"model": "claude-sonnet-4-6", "api_key": "sk-ant-..."}
+
+# Google Gemini
+{"model": "gemini-1.5-pro",    "api_key": "..."}
+
+# Any OpenAI-compatible endpoint (DeepSeek, Groq, Ollama, …)
+{"model": "deepseek-chat", "api_key": "sk-...", "base_url": "https://api.deepseek.com"}</code></pre>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Model prefix</th><th>Auto-detected provider</th><th>Required extra</th></tr></thead>
+        <tbody>
+          <tr><td><code>gpt-*</code>, <code>o1-*</code>, <code>o3-*</code></td><td>OpenAI</td><td><code>[openai]</code></td></tr>
+          <tr><td><code>claude-*</code></td><td>Anthropic</td><td><code>[anthropic]</code></td></tr>
+          <tr><td><code>gemini-*</code></td><td>Google Gemini</td><td><code>[gemini]</code></td></tr>
+          <tr><td>any + <code>base_url</code></td><td>OpenAI-compatible</td><td><code>[openai]</code></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+
+    <div class="section" id="memory-config">
+      <h2>MemoryConfig</h2>
+      <p class="section-desc">Redis-backed session memory. History is loaded at the start of each <code>run()</code> and saved at the end. Requires <code>pip install 'agentinc-sdk[memory]'</code>.</p>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">{
+    "type":       "redis",
+    "connection": "redis://localhost:6379/0",
+    "user":       "optional",
+    "password":   "optional",
+}</code></pre>
+      <p>Session ID from <code>input.metadata["session_id"]</code>. Falls back to a per-request UUID when absent. History stored with a 24-hour TTL.</p>
+      <pre><div class="code-header">shell — passing session_id<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-bash">curl -X POST http://localhost:8000 \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","metadata":{"session_id":"user-123"},"message":{"role":"user","parts":[{"type":"text","text":"My name is Alice"}]}}}'</code></pre>
+    </div>
+
+    <div class="section" id="mcp-config">
+      <h2>MCPConfig</h2>
+      <p class="section-desc">Connect to MCP servers. Tool schemas are fetched on the first <code>run()</code> call and merged with local tools. Requires <code>pip install 'agentinc-sdk[mcp]'</code>.</p>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python"># stdio — spawns a subprocess
+{
+    "type":    "stdio",
+    "command": "npx",
+    "args":    ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+}
+
+# SSE — connects to a running HTTP server
+{
+    "type": "sse",
+    "url":  "http://localhost:3001/sse",
+}</code></pre>
+    </div>
+
     <div class="section" id="agent-protocol">
       <h2>AgentProtocol</h2>
-      <p class="section-desc">The universal contract every agent must satisfy. It's a runtime-checkable <code>Protocol</code>, not a base class &mdash; structural subtyping means you just implement the method.</p>
-
+      <p class="section-desc">The universal agent contract. Use this for framework integrations that manage their own LLM calls. <code>Agent</code> already implements it.</p>
       <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-protocol">Protocol</span>
-          <span class="api-card-name">AgentProtocol</span>
-        </div>
-        <p>Any object with a <code>run</code> method matching this signature satisfies the protocol.</p>
+        <div class="api-card-header"><span class="api-badge badge-protocol">Protocol</span><span class="api-card-name">AgentProtocol</span></div>
+        <p>Any object with a matching <code>run</code> method satisfies the protocol. No inheritance needed.</p>
       </div>
+      <pre><div class="code-header">protocol.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">@runtime_checkable
+class AgentProtocol(Protocol):
+    def run(self, input: AgentInput) -> AsyncIterator[AgentOutput]: ...</code></pre>
+      <h3>Direct implementation</h3>
+      <pre><div class="code-header">my_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">from agentinc.sdk import AgentInput, AgentOutput, AgentProtocol
+from agentinc.sdk.serve import serve
 
-      <pre><div class="code-header">protocol.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="dec">@runtime_checkable</span>
-<span class="kw">class</span> <span class="cls">AgentProtocol</span>(<span class="cls">Protocol</span>):
-    <span class="kw">def</span> <span class="fn">run</span>(<span class="self">self</span>, <span class="param">input</span>: <span class="cls">AgentInput</span>) -> <span class="cls">AsyncIterator</span>[<span class="cls">AgentOutput</span>]: ...</code></pre>
+class MyAgent:
+    async def run(self, input: AgentInput):
+        yield AgentOutput(content=f"Hello! You said: {input.message}", done=True)
 
-      <h3>Implementing directly</h3>
-      <pre><div class="code-header">my_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">AgentInput</span>, <span class="cls">AgentOutput</span>, <span class="cls">AgentProtocol</span>
-
-<span class="kw">class</span> <span class="cls">MyAgent</span>:
-    <span class="kw">async def</span> <span class="fn">run</span>(<span class="self">self</span>, <span class="param">input</span>: <span class="cls">AgentInput</span>) -> <span class="cls">AsyncIterator</span>[<span class="cls">AgentOutput</span>]:
-        <span class="kw">yield</span> <span class="cls">AgentOutput</span>(<span class="param">content</span>=<span class="str">f"Hello! You said: </span>{input.message}<span class="str">"</span>, <span class="param">done</span>=<span class="none">True</span>)
-
-agent = <span class="cls">MyAgent</span>()
-<span class="kw">assert</span> <span class="fn">isinstance</span>(agent, <span class="cls">AgentProtocol</span>)  <span class="cmt"># passes</span></code></pre>
+assert isinstance(MyAgent(), AgentProtocol)  # passes
+serve(MyAgent(), name="my-agent", port=8000)</code></pre>
     </div>
 
-    <!-- ToolProtocol -->
     <div class="section" id="tool-protocol">
       <h2>ToolProtocol</h2>
-      <p class="section-desc">The contract for tools that agents can invoke. Provides schema introspection and async execution.</p>
-
+      <p class="section-desc">The contract for tools the agent can invoke.</p>
       <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-protocol">Protocol</span>
-          <span class="api-card-name">ToolProtocol</span>
-        </div>
+        <div class="api-card-header"><span class="api-badge badge-protocol">Protocol</span><span class="api-card-name">ToolProtocol</span></div>
         <p>Any object with <code>schema()</code> and <code>call()</code> satisfies this protocol.</p>
       </div>
-
-      <pre><div class="code-header">protocol.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="dec">@runtime_checkable</span>
-<span class="kw">class</span> <span class="cls">ToolProtocol</span>(<span class="cls">Protocol</span>):
-    <span class="kw">def</span> <span class="fn">schema</span>(<span class="self">self</span>) -> <span class="cls">ToolSchema</span>: ...
-    <span class="kw">async def</span> <span class="fn">call</span>(<span class="self">self</span>, <span class="param">tool_call</span>: <span class="cls">ToolCall</span>) -> <span class="typ">str</span>: ...</code></pre>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>schema()</code></td><td><code>ToolSchema</code></td><td>JSON-Schema description of the tool's parameters</td></tr>
-            <tr><td><code>call(tool_call)</code></td><td><code>str</code></td><td>Execute the tool with the given arguments and return the result</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <pre><div class="code-header">protocol.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">@runtime_checkable
+class ToolProtocol(Protocol):
+    def schema(self) -> ToolSchema: ...
+    async def call(self, tool_call: ToolCall) -> str: ...</code></pre>
     </div>
 
-    <!-- Schemas -->
     <div class="section" id="schemas">
       <h2>Schemas</h2>
-      <p class="section-desc">Pydantic models that form the data contract between agents, tools, and the platform.</p>
-
-      <!-- AgentInput -->
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-model">Model</span>
-          <span class="api-card-name">AgentInput</span>
-        </div>
-        <p>The input passed to every agent invocation.</p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>message</code></td><td><code>str</code></td><td><em>required</em></td><td>The user's message text</td></tr>
-            <tr><td><code>history</code></td><td><code>list[Message]</code></td><td><code>[]</code></td><td>Conversation history</td></tr>
-            <tr><td><code>tool_schemas</code></td><td><code>list[ToolSchema]</code></td><td><code>[]</code></td><td>Available tools for this invocation</td></tr>
-            <tr><td><code>metadata</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Arbitrary metadata</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- AgentOutput -->
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-model">Model</span>
-          <span class="api-card-name">AgentOutput</span>
-        </div>
-        <p>A single chunk yielded by an agent's <code>run()</code> method.</p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>content</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Text content of this chunk</td></tr>
-            <tr><td><code>tool_calls</code></td><td><code>list[ToolCall]</code></td><td><code>[]</code></td><td>Tool calls the agent wants to make</td></tr>
-            <tr><td><code>done</code></td><td><code>bool</code></td><td><code>False</code></td><td>Whether this is the final output chunk</td></tr>
-            <tr><td><code>metadata</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Arbitrary output metadata</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- Message -->
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-model">Model</span>
-          <span class="api-card-name">Message</span>
-        </div>
-        <p>A single message in the conversation history.</p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>role</code></td><td><code>"user" | "assistant" | "tool"</code></td><td><em>required</em></td><td>Who sent the message</td></tr>
-            <tr><td><code>content</code></td><td><code>str</code></td><td><em>required</em></td><td>Message text</td></tr>
-            <tr><td><code>tool_call_id</code></td><td><code>str | None</code></td><td><code>None</code></td><td>ID of the tool call this message responds to</td></tr>
-            <tr><td><code>tool_calls</code></td><td><code>list[ToolCall]</code></td><td><code>[]</code></td><td>Tool calls in this message</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- ToolCall -->
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-model">Model</span>
-          <span class="api-card-name">ToolCall</span>
-        </div>
-        <p>A request to invoke a specific tool.</p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>id</code></td><td><code>str</code></td><td><em>required</em></td><td>Unique identifier for this call</td></tr>
-            <tr><td><code>name</code></td><td><code>str</code></td><td><em>required</em></td><td>Name of the tool to call</td></tr>
-            <tr><td><code>arguments</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Arguments to pass to the tool</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <!-- ToolSchema -->
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-model">Model</span>
-          <span class="api-card-name">ToolSchema</span>
-        </div>
-        <p>Describes a tool's interface for LLM function-calling.</p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>name</code></td><td><code>str</code></td><td>Tool name (used in ToolCall)</td></tr>
-            <tr><td><code>description</code></td><td><code>str</code></td><td>Human-readable description</td></tr>
-            <tr><td><code>parameters</code></td><td><code>dict[str, Any]</code></td><td>JSON Schema of the tool's parameters</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <p class="section-desc">Pydantic models forming the data contract between agents, tools, and the platform.</p>
+      <div class="api-card"><div class="api-card-header"><span class="api-badge badge-model">Model</span><span class="api-card-name">AgentInput</span></div><p>Input to every agent invocation.</p></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>message</code></td><td><code>str</code></td><td><em>required</em></td><td>The user's message</td></tr>
+          <tr><td><code>history</code></td><td><code>list[Message]</code></td><td><code>[]</code></td><td>Conversation history</td></tr>
+          <tr><td><code>tool_schemas</code></td><td><code>list[ToolSchema]</code></td><td><code>[]</code></td><td>Caller-supplied tool schemas</td></tr>
+          <tr><td><code>metadata</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td><code>session_id</code> key used by Redis memory</td></tr>
+        </tbody>
+      </table></div>
+      <div class="api-card"><div class="api-card-header"><span class="api-badge badge-model">Model</span><span class="api-card-name">AgentOutput</span></div><p>A single chunk yielded by an agent's <code>run()</code>.</p></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Field</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>content</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Text content of this chunk</td></tr>
+          <tr><td><code>tool_calls</code></td><td><code>list[ToolCall]</code></td><td><code>[]</code></td><td>Tool calls the agent wants to make</td></tr>
+          <tr><td><code>done</code></td><td><code>bool</code></td><td><code>False</code></td><td>Whether this is the final chunk</td></tr>
+          <tr><td><code>metadata</code></td><td><code>dict[str, Any]</code></td><td><code>{}</code></td><td>Arbitrary output metadata</td></tr>
+        </tbody>
+      </table></div>
     </div>
 
-    <!-- @tool Decorator -->
     <div class="section" id="tool-decorator">
       <h2>@tool Decorator</h2>
-      <p class="section-desc">Turn any function into a <code>ToolProtocol</code> with one line. The schema is auto-generated from type hints.</p>
+      <p class="section-desc">Turn any function into a <code>ToolProtocol</code> with one line. Schema auto-generated from type hints and docstring.</p>
+      <div class="api-card"><div class="api-card-header"><span class="api-badge badge-decorator">Decorator</span><span class="api-card-name">@tool</span></div><p>Returns a <code>ToolWrapper</code>. Works with sync and async functions.</p></div>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">from agentinc.sdk import tool
 
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-decorator">Decorator</span>
-          <span class="api-card-name">@tool</span>
-        </div>
-        <p>Returns a <code>ToolWrapper</code> instance. Works with both sync and async functions.</p>
-      </div>
+# Bare — schema from type hints + docstring
+@tool
+async def search(query: str, limit: int = 10) -> str:
+    """Searches the web for a query."""
+    return f"Results for {query}"
 
-      <h3>Bare decorator</h3>
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="fn">tool</span>
-
-<span class="dec">@tool</span>
-<span class="kw">async def</span> <span class="fn">search</span>(<span class="param">query</span>: <span class="typ">str</span>, <span class="param">limit</span>: <span class="typ">int</span> = <span class="num">10</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"Results for </span>{query}<span class="str">"</span>
-
-search.<span class="fn">schema</span>()
-<span class="cmt"># ToolSchema(name='search', description='', parameters={</span>
-<span class="cmt">#   'type': 'object',</span>
-<span class="cmt">#   'properties': {'query': {'type': 'string'}, 'limit': {'type': 'integer'}},</span>
-<span class="cmt">#   'required': ['query']</span>
-<span class="cmt"># })</span></code></pre>
-
-      <h3>With arguments</h3>
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="dec">@tool</span>(<span class="param">name</span>=<span class="str">"add"</span>, <span class="param">description</span>=<span class="str">"Adds two numbers"</span>)
-<span class="kw">def</span> <span class="fn">add_numbers</span>(<span class="param">a</span>: <span class="typ">float</span>, <span class="param">b</span>: <span class="typ">float</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="fn">str</span>(a + b)</code></pre>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>name</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Override the tool name (defaults to function name)</td></tr>
-            <tr><td><code>description</code></td><td><code>str</code></td><td><code>""</code></td><td>Override the description (defaults to docstring)</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h4>Supported type mappings</h4>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Python Type</th><th>JSON Schema</th></tr></thead>
-          <tbody>
-            <tr><td><code>str</code></td><td><code>{"type": "string"}</code></td></tr>
-            <tr><td><code>int</code></td><td><code>{"type": "integer"}</code></td></tr>
-            <tr><td><code>float</code></td><td><code>{"type": "number"}</code></td></tr>
-            <tr><td><code>bool</code></td><td><code>{"type": "boolean"}</code></td></tr>
-            <tr><td><code>list</code></td><td><code>{"type": "array"}</code></td></tr>
-            <tr><td><code>list[str]</code></td><td><code>{"type": "array", "items": {"type": "string"}}</code></td></tr>
-            <tr><td><code>dict</code></td><td><code>{"type": "object"}</code></td></tr>
-          </tbody>
-        </table>
-      </div>
+# With explicit name / description
+@tool(name="add", description="Adds two numbers")
+def add_numbers(a: float, b: float) -> str:
+    return str(a + b)</code></pre>
+      <h4>Type mappings</h4>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Python</th><th>JSON Schema</th></tr></thead>
+        <tbody>
+          <tr><td><code>str</code></td><td><code>{"type": "string"}</code></td></tr>
+          <tr><td><code>int</code></td><td><code>{"type": "integer"}</code></td></tr>
+          <tr><td><code>float</code></td><td><code>{"type": "number"}</code></td></tr>
+          <tr><td><code>bool</code></td><td><code>{"type": "boolean"}</code></td></tr>
+          <tr><td><code>list[str]</code></td><td><code>{"type": "array", "items": {"type": "string"}}</code></td></tr>
+          <tr><td><code>dict</code></td><td><code>{"type": "object"}</code></td></tr>
+        </tbody>
+      </table></div>
     </div>
 
-    <!-- ToolWrapper -->
     <div class="section" id="tool-wrapper">
       <h2>ToolWrapper</h2>
-      <p class="section-desc">The object returned by <code>@tool</code>. Satisfies <code>ToolProtocol</code> and can be called directly.</p>
+      <p class="section-desc">The object returned by <code>@tool</code>. Satisfies <code>ToolProtocol</code> — call directly or via a <code>ToolCall</code>.</p>
+      <div class="api-card"><div class="api-card-header"><span class="api-badge badge-class">Class</span><span class="api-card-name">ToolWrapper</span></div><p>Wraps any sync or async callable with a JSON schema and <code>ToolProtocol</code> interface.</p></div>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">from agentinc.sdk import tool, ToolCall
 
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-class">Class</span>
-          <span class="api-card-name">ToolWrapper</span>
-        </div>
-        <p>Wraps any sync or async callable with a JSON schema and ToolProtocol interface.</p>
-      </div>
+@tool
+def greet(name: str) -> str:
+    """Says hello."""
+    return f"Hello, {name}!"
 
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Method</th><th>Returns</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>schema()</code></td><td><code>ToolSchema</code></td><td>The auto-generated JSON Schema</td></tr>
-            <tr><td><code>call(tool_call)</code></td><td><code>str</code></td><td>Execute via <code>ToolCall</code> object</td></tr>
-            <tr><td><code>__call__(**kwargs)</code></td><td><code>str</code></td><td>Execute directly with keyword arguments</td></tr>
-          </tbody>
-        </table>
-      </div>
+# Via ToolCall (how the platform dispatches)
+result = await greet.call(ToolCall(id="1", name="greet", arguments={"name": "World"}))
 
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="fn">tool</span>, <span class="cls">ToolCall</span>
-
-<span class="dec">@tool</span>
-<span class="kw">def</span> <span class="fn">greet</span>(<span class="param">name</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"Hello, </span>{name}<span class="str">!"</span>
-
-<span class="cmt"># Via ToolCall (how the platform dispatches)</span>
-result = <span class="kw">await</span> greet.<span class="fn">call</span>(<span class="cls">ToolCall</span>(<span class="param">id</span>=<span class="str">"1"</span>, <span class="param">name</span>=<span class="str">"greet"</span>, <span class="param">arguments</span>={<span class="str">"name"</span>: <span class="str">"World"</span>}))
-
-<span class="cmt"># Direct call</span>
-result = <span class="kw">await</span> greet(<span class="param">name</span>=<span class="str">"World"</span>)</code></pre>
+# Direct call
+result = await greet(name="World")</code></pre>
     </div>
 
-    <!-- RawAdapter -->
     <div class="section" id="raw-adapter">
-      <h2>RawAdapter</h2>
-      <p class="section-desc">The fastest way to turn any function into an <code>AgentProtocol</code>. It auto-detects your function's signature and adapts accordingly.</p>
-
+      <h2>RawAdapter <span style="font-size:14px;color:#ff5555;font-weight:500;">⚠ Deprecated</span></h2>
+      <p class="section-desc">Kept for backward compatibility. Emits <code>DeprecationWarning</code> on instantiation. Will be removed in v0.3.</p>
       <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-class">Class</span>
-          <span class="api-card-name">RawAdapter(fn)</span>
-        </div>
-        <p>Accepts any callable and exposes it as <code>AgentProtocol.run()</code>.</p>
+        <div class="api-card-header"><span class="api-badge badge-deprecated">Deprecated</span><span class="api-card-name">RawAdapter(fn)</span></div>
+        <p>Wraps any callable as <code>AgentProtocol.run()</code>. Migrate to <code>Agent()</code> or implement <code>AgentProtocol</code> directly.</p>
       </div>
-
-      <h3>Supported signatures</h3>
-      <p>RawAdapter inspects your function and auto-maps arguments. No agentinc imports needed in your function.</p>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Signature</th><th>Behavior</th></tr></thead>
-          <tbody>
-            <tr><td><code>fn(message: str) -> str</code></td><td>Simple request/response</td></tr>
-            <tr><td><code>fn(message: str) -> AsyncIterator[str]</code></td><td>Streaming text chunks</td></tr>
-            <tr><td><code>fn(message: str, history: list)</code></td><td>With conversation history (as plain dicts)</td></tr>
-            <tr><td><code>fn(message: str, history: list, tools: list)</code></td><td>With history and available tool schemas</td></tr>
-            <tr><td><code>fn(input: AgentInput) -> AgentOutput</code></td><td>Full agentinc-aware handler</td></tr>
-            <tr><td><code>fn(input: AgentInput) -> AsyncIterator[AgentOutput]</code></td><td>Full streaming handler</td></tr>
-          </tbody>
-        </table>
+      <div class="callout callout-warn">
+        <i class="fa-solid fa-triangle-exclamation" style="font-size:16px;margin-top:2px;flex-shrink:0;"></i>
+        <span>Migrate to <code>Agent(role=..., model=..., tools=[...])</code>. For framework integrations, implement <code>AgentProtocol</code> directly.</span>
       </div>
-
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">RawAdapter</span>, <span class="cls">AgentInput</span>
-
-<span class="cmt"># Simple function — no SDK imports needed</span>
-<span class="kw">async def</span> <span class="fn">echo</span>(<span class="param">message</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"Echo: </span>{message}<span class="str">"</span>
-
-<span class="cmt"># Streaming</span>
-<span class="kw">async def</span> <span class="fn">stream</span>(<span class="param">message</span>: <span class="typ">str</span>):
-    <span class="kw">for</span> word <span class="kw">in</span> message.split():
-        <span class="kw">yield</span> word + <span class="str">" "</span>
-
-<span class="cmt"># With history and tools</span>
-<span class="kw">async def</span> <span class="fn">chat</span>(<span class="param">message</span>: <span class="typ">str</span>, <span class="param">history</span>: <span class="typ">list</span>, <span class="param">tools</span>: <span class="typ">list</span>):
-    <span class="kw">yield</span> <span class="str">f"Got </span>{<span class="fn">len</span>(history)}<span class="str"> messages and </span>{<span class="fn">len</span>(tools)}<span class="str"> tools"</span>
-
-<span class="cmt"># All three work the same way:</span>
-agent = <span class="cls">RawAdapter</span>(<span class="fn">echo</span>)
-<span class="kw">async for</span> output <span class="kw">in</span> agent.<span class="fn">run</span>(<span class="cls">AgentInput</span>(<span class="param">message</span>=<span class="str">"hi"</span>)):
-    <span class="fn">print</span>(output.content)</code></pre>
-
-      <h3>Tool call dispatch</h3>
-      <p>When your function yields a dict with <code>tool_calls</code>, RawAdapter converts it to a proper <code>AgentOutput</code>:</p>
-
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">async def</span> <span class="fn">agent_with_tools</span>(<span class="param">message</span>: <span class="typ">str</span>, <span class="param">history</span>: <span class="typ">list</span>, <span class="param">tools</span>: <span class="typ">list</span>):
-    <span class="kw">yield</span> {
-        <span class="str">"tool_calls"</span>: [{<span class="str">"id"</span>: <span class="str">"1"</span>, <span class="str">"name"</span>: <span class="str">"search"</span>, <span class="str">"arguments"</span>: {<span class="str">"q"</span>: message}}],
-        <span class="str">"done"</span>: <span class="none">False</span>,
-    }</code></pre>
     </div>
 
-    <!-- A2A Server -->
     <div class="section" id="serve">
       <h2>A2A Server</h2>
-      <p class="section-desc">Serve any <code>AgentProtocol</code> as an A2A-compliant HTTP endpoint. Supports both request/response and SSE streaming. Requires the <code>[serve]</code> extra.</p>
-
-      <div class="callout callout-warn">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-        <span>Install the serve extra first: <code>pip install agentinc-sdk[serve]</code></span>
-      </div>
-
-      <h3>Endpoints</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>GET</code></td><td><code>/.well-known/agent.json</code></td><td>Agent card (name, description, capabilities)</td></tr>
-            <tr><td><code>POST</code></td><td><code>/</code></td><td>JSON-RPC 2.0 endpoint</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <h3>JSON-RPC Methods</h3>
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Method</th><th>Response</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>tasks/send</code></td><td>JSON</td><td>Send a message and get a complete response</td></tr>
-            <tr><td><code>tasks/sendSubscribe</code></td><td>SSE stream</td><td>Send a message and stream the response via Server-Sent Events</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <p class="section-desc">Serve any <code>AgentProtocol</code> as an A2A-compliant HTTP endpoint. Requires <code>[serve]</code> extra.</p>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Method</th><th>Path</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>GET</code></td><td><code>/.well-known/agent.json</code></td><td>Agent card</td></tr>
+          <tr><td><code>POST</code></td><td><code>/</code></td><td>JSON-RPC 2.0 (<code>tasks/send</code>, <code>tasks/sendSubscribe</code>)</td></tr>
+        </tbody>
+      </table></div>
     </div>
 
-    <!-- create_app -->
     <div class="section" id="create-app">
       <h3>create_app()</h3>
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-function">Function</span>
-          <span class="api-card-name">create_app(agent, *, name, description) -> FastAPI</span>
-        </div>
-        <p>Returns a FastAPI application you can run with any ASGI server. Use this when you need more control over the server lifecycle.</p>
-      </div>
+      <div class="api-card"><div class="api-card-header"><span class="api-badge badge-function">Function</span><span class="api-card-name">create_app(agent, *, name, description) → FastAPI</span></div><p>Returns a FastAPI app for custom ASGI deployments.</p></div>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">from agentinc.sdk import Agent
+from agentinc.sdk.serve import create_app
 
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>agent</code></td><td><code>AgentProtocol</code></td><td><em>required</em></td><td>The agent to serve</td></tr>
-            <tr><td><code>name</code></td><td><code>str</code></td><td><code>"agent"</code></td><td>Agent name (shown in agent card)</td></tr>
-            <tr><td><code>description</code></td><td><code>str</code></td><td><code>""</code></td><td>Agent description</td></tr>
-          </tbody>
-        </table>
-      </div>
-
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">RawAdapter</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">create_app</span>
-
-<span class="kw">async def</span> <span class="fn">my_agent</span>(<span class="param">message</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"Echo: </span>{message}<span class="str">"</span>
-
-app = <span class="fn">create_app</span>(<span class="cls">RawAdapter</span>(<span class="fn">my_agent</span>), <span class="param">name</span>=<span class="str">"echo"</span>)
-
-<span class="cmt"># Run with: uvicorn myfile:app --port 8000</span></code></pre>
+app = create_app(
+    Agent(role="You are helpful.", model={"model": "gpt-4o-mini", "api_key": "sk-..."}),
+    name="my-agent",
+)
+# uvicorn myfile:app --port 8000</code></pre>
     </div>
 
-    <!-- serve() -->
     <div class="section" id="serve-fn">
       <h3>serve()</h3>
-      <div class="api-card">
-        <div class="api-card-header">
-          <span class="api-badge badge-function">Function</span>
-          <span class="api-card-name">serve(agent, *, name, description, host, port)</span>
-        </div>
-        <p>One-liner to start a blocking Uvicorn server. Ideal for scripts and local development.</p>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
-          <tbody>
-            <tr><td><code>agent</code></td><td><code>AgentProtocol</code></td><td><em>required</em></td><td>The agent to serve</td></tr>
-            <tr><td><code>name</code></td><td><code>str</code></td><td><code>"agent"</code></td><td>Agent name</td></tr>
-            <tr><td><code>description</code></td><td><code>str</code></td><td><code>""</code></td><td>Agent description</td></tr>
-            <tr><td><code>host</code></td><td><code>str</code></td><td><code>"0.0.0.0"</code></td><td>Bind address</td></tr>
-            <tr><td><code>port</code></td><td><code>int</code></td><td><code>8000</code></td><td>Bind port</td></tr>
-          </tbody>
-        </table>
-      </div>
+      <div class="api-card"><div class="api-card-header"><span class="api-badge badge-function">Function</span><span class="api-card-name">serve(agent, *, name, description, host, port)</span></div><p>Blocking one-liner. Calls uvicorn internally. Best for scripts and local dev.</p></div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>agent</code></td><td><code>AgentProtocol</code></td><td><em>required</em></td><td>The agent to serve</td></tr>
+          <tr><td><code>name</code></td><td><code>str</code></td><td><code>"agent"</code></td><td>Agent name</td></tr>
+          <tr><td><code>description</code></td><td><code>str</code></td><td><code>""</code></td><td>Agent description</td></tr>
+          <tr><td><code>host</code></td><td><code>str</code></td><td><code>"0.0.0.0"</code></td><td>Bind address</td></tr>
+          <tr><td><code>port</code></td><td><code>int</code></td><td><code>8000</code></td><td>Bind port</td></tr>
+        </tbody>
+      </table></div>
     </div>
 
-    <!-- Examples -->
     <div class="section" id="example-openai">
       <h2>Example: OpenAI Agent</h2>
-      <p class="section-desc">Wrap an OpenAI chat completion agent with tool support.</p>
+      <p class="section-desc">Minimal <code>Agent</code> with a tool using an OpenAI model.</p>
+      <pre><div class="code-header">openai_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">import os
+from agentinc.sdk import Agent
+from agentinc.sdk.serve import serve
 
-      <pre><div class="code-header">openai_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> openai <span class="kw">import</span> <span class="cls">AsyncOpenAI</span>
-<span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">RawAdapter</span>, <span class="fn">tool</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">serve</span>
+def get_weather(city: str) -> str:
+    """Gets the current weather for a city."""
+    return f"72°F and sunny in {city}"
 
-client = <span class="cls">AsyncOpenAI</span>()
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    tools=[get_weather],
+)
 
-<span class="dec">@tool</span>(<span class="param">description</span>=<span class="str">"gets the current weather"</span>)
-<span class="kw">def</span> <span class="fn">get_weather</span>(<span class="param">city</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"72°F and sunny in </span>{city}<span class="str">"</span>
-
-<span class="kw">async def</span> <span class="fn">openai_agent</span>(<span class="param">message</span>: <span class="typ">str</span>, <span class="param">history</span>: <span class="typ">list</span>, <span class="param">tools</span>: <span class="typ">list</span>):
-    messages = [{<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"You are a helpful assistant."</span>}]
-    <span class="kw">for</span> msg <span class="kw">in</span> history:
-        messages.append({<span class="str">"role"</span>: msg[<span class="str">"role"</span>], <span class="str">"content"</span>: msg[<span class="str">"content"</span>]})
-    messages.append({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: message})
-
-    openai_tools = [{
-        <span class="str">"type"</span>: <span class="str">"function"</span>,
-        <span class="str">"function"</span>: {<span class="str">"name"</span>: t[<span class="str">"name"</span>], <span class="str">"description"</span>: t[<span class="str">"description"</span>], <span class="str">"parameters"</span>: t[<span class="str">"parameters"</span>]}
-    } <span class="kw">for</span> t <span class="kw">in</span> tools] <span class="kw">or</span> <span class="none">None</span>
-
-    response = <span class="kw">await</span> client.chat.completions.<span class="fn">create</span>(
-        <span class="param">model</span>=<span class="str">"gpt-4o-mini"</span>, <span class="param">messages</span>=messages, <span class="param">tools</span>=openai_tools,
-    )
-    choice = response.choices[<span class="num">0</span>]
-
-    <span class="kw">if</span> choice.message.tool_calls:
-        <span class="kw">yield</span> {<span class="str">"tool_calls"</span>: [
-            {<span class="str">"id"</span>: tc.id, <span class="str">"name"</span>: tc.function.name,
-             <span class="str">"arguments"</span>: json.loads(tc.function.arguments)}
-            <span class="kw">for</span> tc <span class="kw">in</span> choice.message.tool_calls
-        ], <span class="str">"done"</span>: <span class="none">False</span>}
-    <span class="kw">else</span>:
-        <span class="kw">yield</span> choice.message.content
-
-<span class="fn">serve</span>(<span class="cls">RawAdapter</span>(openai_agent), <span class="param">name</span>=<span class="str">"openai-agent"</span>, <span class="param">port</span>=<span class="num">8000</span>)</code></pre>
+serve(agent, name="openai-agent", port=8000)</code></pre>
     </div>
 
     <div class="section" id="example-anthropic">
       <h2>Example: Anthropic Agent</h2>
-      <p class="section-desc">Wrap a Claude-powered agent with tool support and streaming.</p>
+      <p class="section-desc">Claude-powered agent — provider auto-detected from the <code>claude-</code> prefix.</p>
+      <pre><div class="code-header">anthropic_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">import os
+from agentinc.sdk import Agent
+from agentinc.sdk.serve import serve
 
-      <pre><div class="code-header">anthropic_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> anthropic <span class="kw">import</span> <span class="cls">AsyncAnthropic</span>
-<span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">RawAdapter</span>, <span class="fn">tool</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">serve</span>
+def lookup(topic: str) -> str:
+    """Looks up a fact in the knowledge base."""
+    return f"Here's what we know about {topic}: it's fascinating."
 
-client = <span class="cls">AsyncAnthropic</span>()
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+    tools=[lookup],
+)
 
-<span class="dec">@tool</span>(<span class="param">description</span>=<span class="str">"looks up a fact"</span>)
-<span class="kw">def</span> <span class="fn">lookup</span>(<span class="param">topic</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"Facts about </span>{topic}<span class="str">"</span>
+serve(agent, name="anthropic-agent", port=8002)</code></pre>
+    </div>
 
-<span class="kw">async def</span> <span class="fn">anthropic_agent</span>(<span class="param">message</span>: <span class="typ">str</span>, <span class="param">history</span>: <span class="typ">list</span>, <span class="param">tools</span>: <span class="typ">list</span>):
-    messages = [{<span class="str">"role"</span>: m[<span class="str">"role"</span>], <span class="str">"content"</span>: m[<span class="str">"content"</span>]} <span class="kw">for</span> m <span class="kw">in</span> history]
-    messages.append({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: message})
+    <div class="section" id="example-memory">
+      <h2>Example: Session Memory</h2>
+      <p class="section-desc">Persistent multi-turn conversations backed by Redis.</p>
+      <pre><div class="code-header">memory_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">import os
+from agentinc.sdk import Agent
+from agentinc.sdk.serve import serve
 
-    anthropic_tools = [
-        {<span class="str">"name"</span>: t[<span class="str">"name"</span>], <span class="str">"description"</span>: t[<span class="str">"description"</span>], <span class="str">"input_schema"</span>: t[<span class="str">"parameters"</span>]}
-        <span class="kw">for</span> t <span class="kw">in</span> tools
-    ] <span class="kw">or</span> <span class="none">None</span>
+agent = Agent(
+    role="You are a friendly assistant with a long memory.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    memory={
+        "type":       "redis",
+        "connection": os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
+        "password":   os.environ.get("REDIS_PASSWORD"),
+    },
+)
 
-    kwargs = <span class="fn">dict</span>(<span class="param">model</span>=<span class="str">"claude-sonnet-4-20250514"</span>, <span class="param">max_tokens</span>=<span class="num">1024</span>,
-                  <span class="param">system</span>=<span class="str">"You are a helpful assistant."</span>, <span class="param">messages</span>=messages)
-    <span class="kw">if</span> anthropic_tools:
-        kwargs[<span class="str">"tools"</span>] = anthropic_tools
+serve(agent, name="memory-agent", port=8000)</code></pre>
+      <pre><div class="code-header">shell — two-turn session test<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-bash"># Turn 1
+curl -X POST http://localhost:8000 \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","metadata":{"session_id":"demo"},"message":{"role":"user","parts":[{"type":"text","text":"My name is Alice"}]}}}'
 
-    response = <span class="kw">await</span> client.messages.<span class="fn">create</span>(**kwargs)
+# Turn 2 — agent recalls the name
+curl -X POST http://localhost:8000 \
+  -d '{"jsonrpc":"2.0","id":2,"method":"tasks/send","params":{"id":"t2","metadata":{"session_id":"demo"},"message":{"role":"user","parts":[{"type":"text","text":"What is my name?"}]}}}'</code></pre>
+    </div>
 
-    <span class="kw">for</span> block <span class="kw">in</span> response.content:
-        <span class="kw">if</span> block.type == <span class="str">"tool_use"</span>:
-            <span class="kw">yield</span> {<span class="str">"tool_calls"</span>: [{<span class="str">"id"</span>: block.id, <span class="str">"name"</span>: block.name,
-                     <span class="str">"arguments"</span>: block.input}], <span class="str">"done"</span>: <span class="none">False</span>}
-        <span class="kw">elif</span> block.type == <span class="str">"text"</span>:
-            <span class="kw">yield</span> block.text
+    <div class="section" id="example-mcp">
+      <h2>Example: MCP Server</h2>
+      <p class="section-desc">Connect to an MCP server. Tool schemas are fetched on first call and merged with local tools.</p>
+      <pre><div class="code-header">mcp_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">import os
+from agentinc.sdk import Agent
+from agentinc.sdk.serve import serve
 
-<span class="fn">serve</span>(<span class="cls">RawAdapter</span>(anthropic_agent), <span class="param">name</span>=<span class="str">"anthropic-agent"</span>, <span class="param">port</span>=<span class="num">8002</span>)</code></pre>
+def read_file(path: str) -> str:
+    """Reads a local file."""
+    with open(path) as f:
+        return f.read()
+
+agent = Agent(
+    role="You are a helpful file assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    tools=[read_file],   # local tools
+    mcps=[{              # MCP tools — discovered on first run()
+        "type":    "stdio",
+        "command": "npx",
+        "args":    ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+    }],
+)
+
+serve(agent, name="mcp-agent", port=8000)</code></pre>
     </div>
 
     <div class="section" id="example-langchain">
       <h2>Example: LangChain Agent</h2>
-      <p class="section-desc">Wrap a LangChain ChatOpenAI agent with bound tools.</p>
+      <p class="section-desc">LangChain manages its own LLM calls — implement <code>AgentProtocol</code> directly.</p>
+      <pre><div class="code-header">langchain_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.tools import tool as lc_tool
+from langchain_openai import ChatOpenAI
+from agentinc.sdk import AgentInput, AgentOutput
+from agentinc.sdk.serve import serve
 
-      <pre><div class="code-header">langchain_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> langchain_core.messages <span class="kw">import</span> <span class="cls">HumanMessage</span>, <span class="cls">AIMessage</span>, <span class="cls">SystemMessage</span>
-<span class="kw">from</span> langchain_core.tools <span class="kw">import</span> tool <span class="kw">as</span> lc_tool
-<span class="kw">from</span> langchain_openai <span class="kw">import</span> <span class="cls">ChatOpenAI</span>
-<span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">RawAdapter</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">serve</span>
+@lc_tool
+def calculator(expression: str) -> str:
+    """Evaluates a math expression."""
+    return str(eval(expression))
 
-<span class="dec">@lc_tool</span>
-<span class="kw">def</span> <span class="fn">calculator</span>(<span class="param">expression</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="str">"""Evaluates a math expression."""</span>
-    <span class="kw">return</span> <span class="fn">str</span>(<span class="fn">eval</span>(expression))
+llm = ChatOpenAI(model="gpt-4o-mini").bind_tools([calculator])
 
-llm = <span class="cls">ChatOpenAI</span>(<span class="param">model</span>=<span class="str">"gpt-4o-mini"</span>).<span class="fn">bind_tools</span>([calculator])
+class LangChainAgent:
+    async def run(self, input: AgentInput):
+        messages = [SystemMessage(content="You are a helpful assistant.")]
+        for msg in input.history:
+            messages.append(
+                HumanMessage(content=msg.content) if msg.role == "user"
+                else AIMessage(content=msg.content or "")
+            )
+        messages.append(HumanMessage(content=input.message))
+        response = await llm.ainvoke(messages)
+        if response.tool_calls:
+            yield AgentOutput(
+                tool_calls=[{"id": tc["id"], "name": tc["name"], "arguments": tc["args"]}
+                            for tc in response.tool_calls],
+                done=False,
+            )
+        else:
+            yield AgentOutput(content=response.content, done=True)
 
-<span class="kw">async def</span> <span class="fn">langchain_agent</span>(<span class="param">message</span>: <span class="typ">str</span>, <span class="param">history</span>: <span class="typ">list</span>):
-    messages = [<span class="cls">SystemMessage</span>(<span class="param">content</span>=<span class="str">"You are a helpful assistant."</span>)]
-    <span class="kw">for</span> msg <span class="kw">in</span> history:
-        <span class="kw">if</span> msg[<span class="str">"role"</span>] == <span class="str">"user"</span>:
-            messages.append(<span class="cls">HumanMessage</span>(<span class="param">content</span>=msg[<span class="str">"content"</span>]))
-        <span class="kw">elif</span> msg[<span class="str">"role"</span>] == <span class="str">"assistant"</span>:
-            messages.append(<span class="cls">AIMessage</span>(<span class="param">content</span>=msg[<span class="str">"content"</span>]))
-    messages.append(<span class="cls">HumanMessage</span>(<span class="param">content</span>=message))
-
-    response = <span class="kw">await</span> llm.<span class="fn">ainvoke</span>(messages)
-
-    <span class="kw">if</span> response.tool_calls:
-        <span class="kw">yield</span> {<span class="str">"tool_calls"</span>: [
-            {<span class="str">"id"</span>: tc[<span class="str">"id"</span>], <span class="str">"name"</span>: tc[<span class="str">"name"</span>], <span class="str">"arguments"</span>: tc[<span class="str">"args"</span>]}
-            <span class="kw">for</span> tc <span class="kw">in</span> response.tool_calls
-        ], <span class="str">"done"</span>: <span class="none">False</span>}
-    <span class="kw">else</span>:
-        <span class="kw">yield</span> response.content
-
-<span class="fn">serve</span>(<span class="cls">RawAdapter</span>(langchain_agent), <span class="param">name</span>=<span class="str">"langchain-agent"</span>, <span class="param">port</span>=<span class="num">8003</span>)</code></pre>
+serve(LangChainAgent(), name="langchain-agent", port=8003)</code></pre>
     </div>
 
     <div class="section" id="example-crewai">
       <h2>Example: CrewAI Agent</h2>
-      <p class="section-desc">Run a CrewAI crew as an Agentinc agent.</p>
+      <p class="section-desc">CrewAI manages its own orchestration — implement <code>AgentProtocol</code> directly and wrap the blocking call.</p>
+      <pre><div class="code-header">crewai_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">import asyncio
+from crewai import Agent as CrewAgent, Crew, Task
+from agentinc.sdk import AgentInput, AgentOutput
+from agentinc.sdk.serve import serve
 
-      <pre><div class="code-header">crewai_agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">import</span> asyncio
-<span class="kw">from</span> crewai <span class="kw">import</span> <span class="cls">Agent</span>, <span class="cls">Crew</span>, <span class="cls">Task</span>
-<span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">RawAdapter</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">serve</span>
-
-researcher = <span class="cls">Agent</span>(
-    <span class="param">role</span>=<span class="str">"Senior Research Analyst"</span>,
-    <span class="param">goal</span>=<span class="str">"Provide thorough research on any topic"</span>,
-    <span class="param">backstory</span>=<span class="str">"You are an experienced research analyst."</span>,
-    <span class="param">verbose</span>=<span class="none">False</span>,
+researcher = CrewAgent(
+    role="Senior Research Analyst",
+    goal="Provide thorough research on any topic",
+    backstory="You are an experienced research analyst.",
+    verbose=False,
 )
 
-<span class="kw">def</span> <span class="fn">run_crew</span>(<span class="param">message</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    task = <span class="cls">Task</span>(<span class="param">description</span>=message, <span class="param">expected_output</span>=<span class="str">"Clear analysis"</span>, <span class="param">agent</span>=researcher)
-    crew = <span class="cls">Crew</span>(<span class="param">agents</span>=[researcher], <span class="param">tasks</span>=[task], <span class="param">verbose</span>=<span class="none">False</span>)
-    <span class="kw">return</span> <span class="fn">str</span>(crew.<span class="fn">kickoff</span>())
+class CrewAIAgent:
+    async def run(self, input: AgentInput):
+        task = Task(description=input.message, expected_output="Clear analysis", agent=researcher)
+        crew = Crew(agents=[researcher], tasks=[task], verbose=False)
+        # kickoff() is synchronous — wrap to avoid blocking the event loop
+        result = await asyncio.to_thread(crew.kickoff)
+        yield AgentOutput(content=str(result), done=True)
 
-<span class="kw">async def</span> <span class="fn">crewai_agent</span>(<span class="param">message</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return await</span> asyncio.<span class="fn">to_thread</span>(run_crew, message)
-
-<span class="fn">serve</span>(<span class="cls">RawAdapter</span>(crewai_agent), <span class="param">name</span>=<span class="str">"crewai-agent"</span>, <span class="param">port</span>=<span class="num">8004</span>)</code></pre>
+serve(CrewAIAgent(), name="crewai-agent", port=8004)</code></pre>
     </div>
 
-    <div class="section" id="example-tools">
-      <h2>Example: Agent with Tools</h2>
-      <p class="section-desc">Full tool loop &mdash; the agent decides which tools to call, dispatches them, feeds results back to the LLM, and responds with a final answer.</p>
+    <div class="section" id="marketplace">
+      <h2>Ship to the Marketplace</h2>
+      <p class="section-desc">Once your agent works locally, publish it to the Agentinc marketplace so tenants can discover and deploy it into their own isolated namespaces.</p>
+      <div class="feature-grid">
+        <div class="feature-item"><div class="feature-item-title">1. Build &amp; test locally</div><div class="feature-item-desc">Run <code>serve()</code> and verify your agent responds correctly over A2A before publishing.</div></div>
+        <div class="feature-item"><div class="feature-item-title">2. Add an agent manifest</div><div class="feature-item-desc">Create <code>agent.json</code> in your project with name, description, version, and entry point.</div></div>
+        <div class="feature-item"><div class="feature-item-title">3. Publish via CLI</div><div class="feature-item-desc">Run <code>agentinc publish</code> to bundle and upload your agent to the marketplace registry.</div></div>
+        <div class="feature-item"><div class="feature-item-title">4. Tenants deploy it</div><div class="feature-item-desc">Tenants find your agent in the marketplace and deploy it into their namespace with one click.</div></div>
+      </div>
+      <h3>agent.json manifest</h3>
+      <pre><div class="code-header">agent.json<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-json">{
+  "name":        "my-agent",
+  "version":     "1.0.0",
+  "description": "A helpful assistant with tool support",
+  "entrypoint":  "agent.py",
+  "runtime":     "python3.12",
+  "capabilities": {
+    "streaming": true,
+    "tools":     true,
+    "memory":    false
+  }
+}</code></pre>
+      <h3>Publish</h3>
+      <pre><div class="code-header">shell<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-bash"># Login to the Agentinc registry
+agentinc login
 
-      <pre><div class="code-header">agent_with_tools.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> openai <span class="kw">import</span> <span class="cls">AsyncOpenAI</span>
-<span class="kw">from</span> agentinc.sdk <span class="kw">import</span> <span class="cls">AgentInput</span>, <span class="cls">RawAdapter</span>, <span class="cls">ToolCall</span>, <span class="fn">tool</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">serve</span>
+# Publish from your project directory
+agentinc publish
 
-client = <span class="cls">AsyncOpenAI</span>()
+# Publish a specific version
+agentinc publish --version 1.2.0
 
-<span class="dec">@tool</span>(<span class="param">description</span>=<span class="str">"Gets the current weather"</span>)
-<span class="kw">def</span> <span class="fn">get_weather</span>(<span class="param">city</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="str">f"72°F and sunny in </span>{city}<span class="str">"</span>
+# List your published agents
+agentinc agents list</code></pre>
+      <h3>Entry point structure</h3>
+      <p>Your <code>entrypoint</code> file must expose a top-level variable named <code>agent</code> that satisfies <code>AgentProtocol</code>.</p>
+      <pre><div class="code-header">agent.py<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python"># agent.py — this file is what the platform imports
+import os
+from agentinc.sdk import Agent
 
-<span class="dec">@tool</span>(<span class="param">description</span>=<span class="str">"Evaluates a math expression"</span>)
-<span class="kw">def</span> <span class="fn">calculator</span>(<span class="param">expression</span>: <span class="typ">str</span>) -> <span class="typ">str</span>:
-    <span class="kw">return</span> <span class="fn">str</span>(<span class="fn">eval</span>(expression))
+def get_weather(city: str) -> str:
+    """Gets the current weather for a city."""
+    return f"72°F and sunny in {city}"
 
-TOOLS = [get_weather, calculator]
-TOOL_MAP = {t.<span class="fn">schema</span>().name: t <span class="kw">for</span> t <span class="kw">in</span> TOOLS}
+# The platform reads this variable — name must be "agent"
+agent = Agent(
+    role="You are a helpful weather assistant.",
+    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    tools=[get_weather],
+)
 
-<span class="kw">async def</span> <span class="fn">smart_agent</span>(<span class="param">message</span>: <span class="typ">str</span>, <span class="param">history</span>: <span class="typ">list</span>, <span class="param">tools</span>: <span class="typ">list</span>):
-    messages = [{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: message}]
-    openai_tools = [{<span class="str">"type"</span>: <span class="str">"function"</span>, <span class="str">"function"</span>: t} <span class="kw">for</span> t <span class="kw">in</span> tools]
-
-    <span class="kw">for</span> _ <span class="kw">in</span> <span class="fn">range</span>(<span class="num">5</span>):  <span class="cmt"># max tool rounds</span>
-        resp = <span class="kw">await</span> client.chat.completions.<span class="fn">create</span>(
-            <span class="param">model</span>=<span class="str">"gpt-4o-mini"</span>, <span class="param">messages</span>=messages, <span class="param">tools</span>=openai_tools)
-        choice = resp.choices[<span class="num">0</span>]
-
-        <span class="kw">if not</span> choice.message.tool_calls:
-            <span class="kw">yield</span> choice.message.content
-            <span class="kw">return</span>
-
-        <span class="cmt"># Dispatch each tool call</span>
-        messages.append({<span class="str">"role"</span>: <span class="str">"assistant"</span>, <span class="str">"content"</span>: <span class="str">""</span>,
-            <span class="str">"tool_calls"</span>: [{<span class="str">"id"</span>: tc.id, <span class="str">"type"</span>: <span class="str">"function"</span>,
-                <span class="str">"function"</span>: {<span class="str">"name"</span>: tc.function.name,
-                    <span class="str">"arguments"</span>: tc.function.arguments}}
-                <span class="kw">for</span> tc <span class="kw">in</span> choice.message.tool_calls]})
-
-        <span class="kw">for</span> tc <span class="kw">in</span> choice.message.tool_calls:
-            result = <span class="kw">await</span> TOOL_MAP[tc.function.name].<span class="fn">call</span>(
-                <span class="cls">ToolCall</span>(<span class="param">id</span>=tc.id, <span class="param">name</span>=tc.function.name,
-                    <span class="param">arguments</span>=json.loads(tc.function.arguments)))
-            messages.append({<span class="str">"role"</span>: <span class="str">"tool"</span>, <span class="str">"tool_call_id"</span>: tc.id, <span class="str">"content"</span>: result})
-
-<span class="fn">serve</span>(<span class="cls">RawAdapter</span>(smart_agent), <span class="param">name</span>=<span class="str">"smart-agent"</span>, <span class="param">port</span>=<span class="num">8000</span>)</code></pre>
-
-      <div class="callout callout-tip">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M9 12l2 2 4-4"/></svg>
-        <span>The agent loops: LLM &rarr; tool calls &rarr; dispatch via <code>ToolWrapper.call()</code> &rarr; feed results back &rarr; repeat until the LLM responds with text instead of tool calls.</span>
+# Optional: run locally for testing
+if __name__ == "__main__":
+    from agentinc.sdk.serve import serve
+    serve(agent, name="weather-agent", port=8000)</code></pre>
+      <div class="callout callout-info">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+        <span>API keys are never bundled. The platform injects them at runtime from the tenant's secret store. Reference them via <code>os.environ</code> as shown above.</span>
       </div>
     </div>
 
-    <!-- All Exports -->
     <div class="section" id="exports">
       <h2>All Exports</h2>
       <p class="section-desc">Everything exported from <code>agentinc.sdk</code>.</p>
-
-      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code><span class="kw">from</span> agentinc.sdk <span class="kw">import</span> (
-    <span class="cls">AgentProtocol</span>,     <span class="cmt"># Protocol — implement run()</span>
-    <span class="cls">ToolProtocol</span>,      <span class="cmt"># Protocol — implement schema() + call()</span>
-    <span class="cls">AgentFactory</span>,      <span class="cmt"># Type alias — callable that returns AgentProtocol</span>
-    <span class="cls">AgentInput</span>,        <span class="cmt"># Model — agent invocation input</span>
-    <span class="cls">AgentOutput</span>,       <span class="cmt"># Model — agent invocation output chunk</span>
-    <span class="cls">Message</span>,           <span class="cmt"># Model — conversation history entry</span>
-    <span class="cls">ToolCall</span>,          <span class="cmt"># Model — tool invocation request</span>
-    <span class="cls">ToolSchema</span>,        <span class="cmt"># Model — tool JSON schema</span>
-    <span class="cls">ToolWrapper</span>,       <span class="cmt"># Class — wraps callable as ToolProtocol</span>
-    <span class="fn">tool</span>,              <span class="cmt"># Decorator — function → ToolWrapper</span>
-    <span class="cls">RawAdapter</span>,        <span class="cmt"># Class — wraps callable as AgentProtocol</span>
+      <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">from agentinc.sdk import (
+    # Core
+    Agent,          # Main class — declare and run agents
+    AgentProtocol,  # Protocol — implement run() for custom integrations
+    ToolProtocol,   # Protocol — implement schema() + call()
+    AgentFactory,   # Type alias — callable returning AgentProtocol
+    # Schemas
+    AgentInput,     # Model — agent invocation input
+    AgentOutput,    # Model — single output chunk
+    Message,        # Model — conversation history entry
+    ToolCall,       # Model — tool invocation request
+    ToolSchema,     # Model — tool JSON schema
+    # Config TypedDicts
+    ModelConfig,    # Provider + credentials
+    MemoryConfig,   # Redis memory config
+    MCPConfig,      # MCP server connection config
+    DataConfig,     # RAG config (reserved)
+    # Tools
+    ToolWrapper,    # Class — wraps callable as ToolProtocol
+    tool,           # Decorator — function → ToolWrapper
+    # Deprecated
+    RawAdapter,     # DEPRECATED — use Agent() instead
 )
 
-<span class="cmt"># Serve module (requires [serve] extra)</span>
-<span class="kw">from</span> agentinc.sdk.serve <span class="kw">import</span> <span class="fn">create_app</span>, <span class="fn">serve</span></code></pre>
+# A2A serve module (requires [serve] extra)
+from agentinc.sdk.serve import create_app, serve</code></pre>
     </div>
 
   </div>
@@ -1436,35 +915,68 @@ function toggleSidebar() {
   document.getElementById('sidebar').classList.toggle('open');
   document.getElementById('overlay').classList.toggle('open');
 }
-
 function copyText(text, btn) {
   navigator.clipboard.writeText(text);
   const svg = btn.innerHTML;
-  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22C55E" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
+  btn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#50fa7b" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>';
   setTimeout(() => btn.innerHTML = svg, 1500);
 }
-
 function copyBlock(btn) {
   const code = btn.closest('pre').querySelector('code');
-  const text = code.textContent || code.innerText;
-  navigator.clipboard.writeText(text);
+  navigator.clipboard.writeText(code.textContent || code.innerText);
   const orig = btn.textContent;
   btn.textContent = 'Copied!';
-  btn.style.color = '#22C55E';
+  btn.style.color = '#50fa7b';
   setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 1500);
 }
 
-// Active sidebar link tracking
+const themeToggle = document.getElementById('theme-toggle');
+const themeToggleIcon = document.getElementById('theme-toggle-icon');
+const sidebarLogoImage = document.getElementById('sidebar-logo-image');
+const siteFavicon = document.getElementById('site-favicon');
+const THEME_KEY = 'agentinc-docs-theme';
+const themeIcons = {
+  light: '<circle cx="12" cy="12" r="5"/><path d="M12 1v2"/><path d="M12 21v2"/><path d="m4.22 4.22 1.42 1.42"/><path d="m18.36 18.36 1.42 1.42"/><path d="M1 12h2"/><path d="M21 12h2"/><path d="m4.22 19.78 1.42-1.42"/><path d="m18.36 5.64 1.42-1.42"/>',
+  dark: '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>',
+};
+function getPreferredTheme() {
+  try { const s = localStorage.getItem(THEME_KEY); if (s === 'light' || s === 'dark') return s; } catch (_) {}
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  if (sidebarLogoImage) sidebarLogoImage.src = t === 'light' ? 'images/logo.svg' : 'images/logo_white.svg';
+  if (siteFavicon) siteFavicon.href = t === 'light' ? 'images/logo.svg' : 'images/logo_white.svg';
+  if (themeToggleIcon) themeToggleIcon.innerHTML = themeIcons[t === 'light' ? 'dark' : 'light'];
+  const label = t === 'light' ? 'Switch to dark theme' : 'Switch to light theme';
+  if (themeToggle) { themeToggle.setAttribute('aria-label', label); themeToggle.setAttribute('title', label); }
+  try { localStorage.setItem(THEME_KEY, t); } catch (_) {}
+}
+if (themeToggle) themeToggle.addEventListener('click', () => applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light'));
+applyTheme(getPreferredTheme());
+
 const links = document.querySelectorAll('.sidebar-link');
+const sidebarSections = document.querySelectorAll('.sidebar-section');
+const searchInput = document.getElementById('docs-search');
 const sections = [];
 links.forEach(link => {
   const id = link.getAttribute('href')?.slice(1);
-  if (id) {
-    const el = document.getElementById(id);
-    if (el) sections.push({ el, link });
-  }
+  if (id) { const el = document.getElementById(id); if (el) sections.push({ el, link }); }
 });
-
+function applySearchFilter() {
+  const q = searchInput.value.trim().toLowerCase();
+  sidebarSections.forEach(section => {
+    let v = 0;
+    section.querySelectorAll('.sidebar-link').forEach(link => {
+      const match = !q || link.textContent.toLowerCase().includes(q);
+      link.style.display = match ? '' : 'none';
+      if (match) v++;
+    });
+    section.style.display = v > 0 ? '' : 'none';
+  });
+}
+if (searchInput) searchInput.addEventListener('input', applySearchFilter);
+applySearchFilter();
 const observer = new IntersectionObserver(entries => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
@@ -1474,10 +986,7 @@ const observer = new IntersectionObserver(entries => {
     }
   });
 }, { rootMargin: '-20% 0px -75% 0px' });
-
 sections.forEach(s => observer.observe(s.el));
-
-// Close sidebar on link click (mobile)
 links.forEach(link => {
   link.addEventListener('click', () => {
     if (window.innerWidth <= 900) {
@@ -1488,5 +997,14 @@ links.forEach(link => {
 });
 </script>
 
+<!-- Prism.js syntax highlighting -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
+<script>
+  if (typeof Prism !== 'undefined' && Prism.plugins && Prism.plugins.autoloader) {
+    Prism.plugins.autoloader.languages_path =
+      'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/';
+  }
+</script>
 </body>
 </html>

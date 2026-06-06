@@ -1,8 +1,11 @@
 """
-Agent using LangChain, served over A2A.
+LangChain agent served over A2A via AgentProtocol.
+
+For framework integrations where you manage the LLM call yourself,
+implement AgentProtocol directly (a class with async run()).
 
 Requires:
-    pip install langchain-openai langchain-core
+    pip install langchain-openai langchain-core 'agentinc-sdk[serve]'
 
 Run:
     export OPENAI_API_KEY=sk-...
@@ -12,18 +15,13 @@ Test:
     curl -s -X POST http://localhost:8003 \
       -H "Content-Type: application/json" \
       -d '{"jsonrpc":"2.0","id":1,"method":"tasks/send","params":{"id":"t1","message":{"role":"user","parts":[{"type":"text","text":"What is 25 * 4?"}]}}}' | python -m json.tool
-
-    # Streaming
-    curl -N -X POST http://localhost:8003 \
-      -H "Content-Type: application/json" \
-      -d '{"jsonrpc":"2.0","id":1,"method":"tasks/sendSubscribe","params":{"id":"t1","message":{"role":"user","parts":[{"type":"text","text":"Tell me a joke"}]}}}'
 """
 
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.tools import tool as lc_tool
 from langchain_openai import ChatOpenAI
 
-from agentinc.sdk import AgentInput, AgentOutput, RawAdapter
+from agentinc.sdk import AgentInput, AgentOutput
 from agentinc.sdk.serve import serve
 
 
@@ -39,48 +37,29 @@ def calculator(expression: str) -> str:
 llm = ChatOpenAI(model="gpt-4o-mini", streaming=True).bind_tools([calculator])
 
 
-async def langchain_agent(message: str, history: list):
-    messages = [SystemMessage(content="You are a helpful assistant with a calculator tool.")]
-    for msg in history:
-        if msg["role"] == "user":
-            messages.append(HumanMessage(content=msg["content"]))
-        elif msg["role"] == "assistant":
-            messages.append(AIMessage(content=msg["content"]))
-    messages.append(HumanMessage(content=message))
+class LangChainAgent:
+    async def run(self, input: AgentInput):
+        messages = [SystemMessage(content="You are a helpful assistant with a calculator tool.")]
+        for msg in input.history:
+            if msg.role == "user":
+                messages.append(HumanMessage(content=msg.content))
+            elif msg.role == "assistant":
+                messages.append(AIMessage(content=msg.content or ""))
+        messages.append(HumanMessage(content=input.message))
 
-    response = await llm.ainvoke(messages)
+        response = await llm.ainvoke(messages)
 
-    if response.tool_calls:
-        yield {
-            "tool_calls": [
-                {
-                    "id": tc["id"],
-                    "name": tc["name"],
-                    "arguments": tc["args"],
-                }
-                for tc in response.tool_calls
-            ],
-            "done": False,
-        }
-    else:
-        yield response.content
-
-
-async def langchain_streaming_agent(message: str):
-    """Variant that streams tokens."""
-    messages = [
-        SystemMessage(content="You are a helpful assistant."),
-        HumanMessage(content=message),
-    ]
-    async for chunk in llm.astream(messages):
-        if chunk.content:
-            yield chunk.content
+        if response.tool_calls:
+            yield AgentOutput(
+                tool_calls=[
+                    {"id": tc["id"], "name": tc["name"], "arguments": tc["args"]}
+                    for tc in response.tool_calls
+                ],
+                done=False,
+            )
+        else:
+            yield AgentOutput(content=response.content, done=True)
 
 
 if __name__ == "__main__":
-    serve(
-        RawAdapter(langchain_agent),
-        name="langchain-agent",
-        description="LangChain agent with calculator tool",
-        port=8003,
-    )
+    serve(LangChainAgent(), name="langchain-agent", description="LangChain agent with calculator", port=8003)

@@ -2,11 +2,114 @@
 
 ## Table of Contents
 
-1. [Schemas](#schemas)
-2. [Protocols](#protocols)
-3. [ToolWrapper](#toolwrapper)
-4. [RawAdapter](#rawadapter)
-5. [Serve Module](#serve-module)
+1. [Agent](#agent)
+2. [Config TypedDicts](#config-typeddicts)
+3. [Schemas](#schemas)
+4. [Protocols](#protocols)
+5. [ToolWrapper](#toolwrapper)
+6. [RawAdapter (deprecated)](#rawadapter-deprecated)
+7. [Serve Module](#serve-module)
+
+---
+
+## Agent
+
+```python
+class Agent:
+    def __init__(
+        self,
+        role:    str,
+        model:   ModelConfig,
+        tools:   list[Callable] = [],
+        mcps:    list[MCPConfig] = [],
+        memory:  MemoryConfig | None = None,
+        context: str | None = None,
+        data:    DataConfig | None = None,
+    ) -> None: ...
+
+    async def run(self, input: AgentInput) -> AsyncIterator[AgentOutput]: ...
+```
+
+Implements `AgentProtocol`. Pass directly to `serve()` or `create_app()`.
+
+**Parameters:**
+
+- `role` — System prompt / persona. Prepended to every LLM call.
+- `model` — Provider credentials. See [ModelConfig](#modelconfig).
+- `tools` — Plain Python functions or `ToolWrapper` instances. Auto-wrapped if plain functions. Schema is derived from type hints and docstring.
+- `mcps` — MCP server connections. Tool schemas are fetched on first `run()` call and merged with local tools.
+- `memory` — Redis-backed session memory. See [MemoryConfig](#memoryconfig). When absent the agent is stateless (caller manages history via `AgentInput.history`).
+- `context` — Optional extra string appended to the system prompt at runtime.
+- `data` — RAG configuration. Accepted but not yet implemented — reserved for a future release.
+
+---
+
+## Config TypedDicts
+
+These are plain Python `TypedDict` classes. Pass as regular dicts.
+
+### ModelConfig
+
+```python
+class ModelConfig(TypedDict, total=False):
+    model:    Required[str]   # e.g. "gpt-4o-mini", "claude-sonnet-4-6", "gemini-1.5-pro"
+    api_key:  Required[str]
+    base_url: str             # optional — enables any OpenAI-compatible endpoint
+```
+
+Provider auto-detection from `model` prefix:
+
+| Prefix | Provider | Install |
+|--------|----------|---------|
+| `gpt-*`, `o1-*`, `o3-*` | OpenAI | `pip install 'agentinc-sdk[openai]'` |
+| `claude-*` | Anthropic | `pip install 'agentinc-sdk[anthropic]'` |
+| `gemini-*` | Google Gemini | `pip install 'agentinc-sdk[gemini]'` |
+| any + `base_url` | OpenAI-compatible | `pip install 'agentinc-sdk[openai]'` |
+
+### MemoryConfig
+
+```python
+class MemoryConfig(TypedDict, total=False):
+    type:       Required[Literal["redis"]]
+    connection: Required[str]   # Redis URL, e.g. "redis://localhost:6379/0"
+    user:       str
+    password:   str
+```
+
+Requires `pip install 'agentinc-sdk[memory]'`.
+
+Session key pattern: `agentinc:session:{session_id}:history` (TTL 24h).  
+Session ID from `input.metadata["session_id"]` — falls back to a per-request UUID.
+
+### MCPConfig
+
+```python
+# stdio
+class MCPStdioConfig(TypedDict):
+    type:    Literal["stdio"]
+    command: str         # e.g. "npx"
+    args:    list[str]   # e.g. ["-y", "@modelcontextprotocol/server-filesystem"]
+
+# SSE
+class MCPSseConfig(TypedDict):
+    type: Literal["sse"]
+    url:  str            # e.g. "http://localhost:3001/sse"
+
+MCPConfig = MCPStdioConfig | MCPSseConfig
+```
+
+Requires `pip install 'agentinc-sdk[mcp]'`.
+
+### DataConfig
+
+```python
+class DataConfig(TypedDict, total=False):
+    type:        str   # e.g. "lightrag"
+    storage_dir: str
+    mode:        str   # "naive" | "local" | "hybrid"
+```
+
+Reserved for native RAG in a future release. The `data=` parameter is accepted by `Agent()` but currently ignored.
 
 ---
 
@@ -18,78 +121,64 @@ All schemas are Pydantic v2 `BaseModel` subclasses from `agentinc.sdk.schemas`.
 
 ```python
 class AgentInput(BaseModel):
-    message: str                                          # required
-    history: list[Message] = Field(default_factory=list)
+    message:      str
+    history:      list[Message]   = Field(default_factory=list)
     tool_schemas: list[ToolSchema] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    metadata:     dict[str, Any]  = Field(default_factory=dict)
 ```
 
-- `message` — The user's text input. Always present, never empty.
-- `history` — Previous conversation turns as `Message` objects. Empty on first turn.
-- `tool_schemas` — Tools available to the agent for this invocation. The platform populates this; developers read it.
-- `metadata` — Extensible dict for arbitrary data.
+- `message` — The user's text input.
+- `history` — Previous conversation turns. When `Agent` memory is configured, persisted history is loaded from Redis and merged with this.
+- `tool_schemas` — Caller-supplied tool schemas (used when implementing AgentProtocol directly). `Agent` manages its own tools internally.
+- `metadata` — `session_id` key used by Redis memory backend.
 
 ### AgentOutput
 
 ```python
 class AgentOutput(BaseModel):
-    content: str | None = None
-    tool_calls: list[ToolCall] = Field(default_factory=list)
-    done: bool = False
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    content:    str | None      = None
+    tool_calls: list[ToolCall]  = Field(default_factory=list)
+    done:       bool            = False
+    metadata:   dict[str, Any]  = Field(default_factory=dict)
 ```
 
-- `content` — Text to send to the user. `None` when the output is a tool call with no text.
-- `tool_calls` — Tools the agent wants the platform to execute. Mutually exclusive with `done=True` in practice.
-- `done` — Signals the final chunk. The platform stops reading after `done=True`.
-- `metadata` — Extensible. Use for custom data like token counts, confidence scores, etc.
+- `content` — Text chunk.
+- `tool_calls` — Tool calls to dispatch. `Agent` handles dispatch internally.
+- `done` — Final chunk signal. The serve layer stops reading after `done=True`.
 
 ### Message
 
 ```python
 class Message(BaseModel):
-    role: Literal["user", "assistant", "tool"]
-    content: str
-    tool_call_id: str | None = None
-    tool_calls: list[ToolCall] = Field(default_factory=list)
+    role:         Literal["user", "assistant", "tool"]
+    content:      str
+    tool_call_id: str | None      = None
+    tool_calls:   list[ToolCall]  = Field(default_factory=list)
 ```
-
-- `role` — Who sent the message.
-- `content` — The message text.
-- `tool_call_id` — Set when `role="tool"` to link back to the ToolCall that produced this result.
-- `tool_calls` — Present when `role="assistant"` and the assistant requested tool execution.
 
 ### ToolCall
 
 ```python
 class ToolCall(BaseModel):
-    id: str
-    name: str
+    id:        str
+    name:      str
     arguments: dict[str, Any] = Field(default_factory=dict)
 ```
-
-- `id` — Unique identifier. Used to correlate tool results back to the call.
-- `name` — Must match a `ToolSchema.name` from the available tools.
-- `arguments` — Key-value pairs matching the tool's JSON Schema `parameters`.
 
 ### ToolSchema
 
 ```python
 class ToolSchema(BaseModel):
-    name: str
+    name:        str
     description: str
-    parameters: dict[str, Any]
+    parameters:  dict[str, Any]
 ```
-
-- `name` — Unique tool identifier.
-- `description` — Human-readable description. LLMs use this to decide when to call the tool.
-- `parameters` — JSON Schema object describing the tool's accepted arguments.
 
 ---
 
 ## Protocols
 
-Both protocols are `@runtime_checkable`, meaning `isinstance()` checks work at runtime.
+Both are `@runtime_checkable` — `isinstance()` checks work at runtime.
 
 ### AgentProtocol
 
@@ -99,7 +188,7 @@ class AgentProtocol(Protocol):
     def run(self, input: AgentInput) -> AsyncIterator[AgentOutput]: ...
 ```
 
-Any object with a `run` method matching this signature satisfies the protocol. No inheritance needed — this is structural subtyping.
+`Agent` satisfies this. For framework integrations (LangChain, CrewAI), implement directly.
 
 ### ToolProtocol
 
@@ -109,17 +198,6 @@ class ToolProtocol(Protocol):
     def schema(self) -> ToolSchema: ...
     async def call(self, tool_call: ToolCall) -> str: ...
 ```
-
-- `schema()` — Returns the tool's JSON Schema description. Called once at registration time.
-- `call(tool_call)` — Executes the tool. Always returns `str`.
-
-### AgentFactory
-
-```python
-AgentFactory = Any  # callable that receives tools and returns AgentProtocol
-```
-
-Type alias for a callable that the platform invokes to create agent instances. Used internally by the platform's loader.
 
 ---
 
@@ -133,56 +211,51 @@ class ToolWrapper:
     async def __call__(self, **kwargs: Any) -> str: ...
 ```
 
-Created by the `@tool` decorator. Satisfies `ToolProtocol`.
-
-- `schema()` — Returns the auto-generated `ToolSchema`.
-- `call(tool_call)` — Executes via a `ToolCall` object (platform dispatch path).
-- `__call__(**kwargs)` — Direct invocation with keyword arguments.
-
-Both `call()` and `__call__()` handle sync and async functions transparently.
+Created by `@tool`. Satisfies `ToolProtocol`. Both `call()` and `__call__()` handle sync and async functions.
 
 ---
 
-## RawAdapter
+## RawAdapter (deprecated)
+
+> **Deprecated in v0.2.** Emits `DeprecationWarning` on instantiation. Will be removed in v0.3.  
+> Migrate to `Agent()`. See `references/raw-adapter.md` for the old signature patterns.
 
 ```python
 class RawAdapter:
-    def __init__(self, fn: Any) -> None: ...
+    def __init__(self, fn: Any) -> None: ...          # emits DeprecationWarning
     async def run(self, input: AgentInput) -> AsyncIterator[AgentOutput]: ...
 ```
-
-Satisfies `AgentProtocol`. See `references/raw-adapter.md` for full signature detection rules.
 
 ---
 
 ## Serve Module
 
-Exported from `agentinc.sdk.serve`. Requires the `[serve]` extra.
-
-### create_app()
-
-```python
-def create_app(
-    agent: AgentProtocol,
-    *,
-    name: str = "agent",
-    description: str = "",
-) -> FastAPI: ...
-```
-
-Returns a FastAPI application. Use this when you need control over the ASGI lifecycle (e.g., adding middleware, mounting under a larger app).
+Exported from `agentinc.sdk.serve`. Requires `pip install 'agentinc-sdk[serve]'`.
 
 ### serve()
 
 ```python
 def serve(
-    agent: AgentProtocol,
+    agent:       AgentProtocol,
     *,
-    name: str = "agent",
+    name:        str = "agent",
     description: str = "",
-    host: str = "0.0.0.0",
-    port: int = 8000,
+    host:        str = "0.0.0.0",
+    port:        int = 8000,
 ) -> None: ...
 ```
 
-Blocking convenience function. Calls `uvicorn.run()` internally. Best for scripts and local development.
+Blocking. Calls `uvicorn.run()` internally.
+
+### create_app()
+
+```python
+def create_app(
+    agent:       AgentProtocol,
+    *,
+    name:        str = "agent",
+    description: str = "",
+) -> FastAPI: ...
+```
+
+Returns a FastAPI app for custom ASGI deployments.
