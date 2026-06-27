@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 from typing import AsyncIterator
 
-from ..schemas import AgentOutput, ModelConfig, ToolCall, ToolSchema
+from ..schemas import AgentOutput, ModelConfig, TokenUsage, ToolCall, ToolSchema
 
 log = logging.getLogger("agentinc.sdk.providers.gemini")
 
@@ -82,23 +82,37 @@ class GeminiProvider:
             async for chunk in self._blocking(contents, gen_config):
                 yield chunk
 
+    @staticmethod
+    def _extract_usage(response) -> TokenUsage | None:
+        meta = getattr(response, "usage_metadata", None)
+        if meta:
+            inp = getattr(meta, "prompt_token_count", 0) or 0
+            out = getattr(meta, "candidates_token_count", 0) or 0
+            total = getattr(meta, "total_token_count", 0) or (inp + out)
+            return TokenUsage(input_tokens=inp, output_tokens=out, total_tokens=total)
+        return None
+
     async def _stream(self, contents, gen_config) -> AsyncIterator[AgentOutput]:
         kwargs = {"model": self._model, "contents": contents}
         if gen_config:
             kwargs["config"] = gen_config
 
+        last_chunk = None
         async for chunk in await self._client.aio.models.generate_content_stream(**kwargs):
+            last_chunk = chunk
             if chunk.function_calls:
                 tool_calls = [
                     ToolCall(id=fc.id or fc.name, name=fc.name, arguments=dict(fc.args or {}))
                     for fc in chunk.function_calls
                 ]
-                yield AgentOutput(tool_calls=tool_calls, done=False)
+                usage = self._extract_usage(chunk)
+                yield AgentOutput(tool_calls=tool_calls, done=False, token_usage=usage)
                 return
             if chunk.text:
                 yield AgentOutput(content=chunk.text, done=False)
 
-        yield AgentOutput(content="", done=True)
+        usage = self._extract_usage(last_chunk) if last_chunk else None
+        yield AgentOutput(content="", done=True, token_usage=usage)
 
     async def _blocking(self, contents, gen_config) -> AsyncIterator[AgentOutput]:
         kwargs = {"model": self._model, "contents": contents}
@@ -106,12 +120,13 @@ class GeminiProvider:
             kwargs["config"] = gen_config
 
         response = await self._client.aio.models.generate_content(**kwargs)
+        usage = self._extract_usage(response)
 
         if response.function_calls:
             tool_calls = [
                 ToolCall(id=fc.id or fc.name, name=fc.name, arguments=dict(fc.args or {}))
                 for fc in response.function_calls
             ]
-            yield AgentOutput(tool_calls=tool_calls, done=False)
+            yield AgentOutput(tool_calls=tool_calls, done=False, token_usage=usage)
         else:
-            yield AgentOutput(content=response.text or "", done=True)
+            yield AgentOutput(content=response.text or "", done=True, token_usage=usage)

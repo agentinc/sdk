@@ -31,11 +31,18 @@ class AgentInput(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 
+class TokenUsage(BaseModel):
+    input_tokens: int = 0
+    output_tokens: int = 0
+    total_tokens: int = 0
+
+
 class AgentOutput(BaseModel):
     content: str | None = None
     tool_calls: list[ToolCall] = Field(default_factory=list)
     done: bool = False
     metadata: dict[str, Any] = Field(default_factory=dict)
+    token_usage: TokenUsage | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -43,9 +50,9 @@ class AgentOutput(BaseModel):
 # ---------------------------------------------------------------------------
 
 class ModelConfig(TypedDict, total=False):
-    model: Required[str]      # e.g. "gpt-4o-mini", "claude-sonnet-4-6", "gemini-1.5-pro"
+    model: Required[str]      # e.g. "openai/gpt-4o-mini", "anthropic/claude-sonnet-4-6", "gemini/gemini-1.5-pro"
     api_key: Required[str]
-    base_url: str             # optional — enables any OpenAI-compatible endpoint
+    base_url: str             # optional — for OpenAI-compatible endpoints
 
 
 class MemoryConfig(TypedDict, total=False):

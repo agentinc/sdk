@@ -38,7 +38,7 @@ def get_weather(city: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather],
 )
 
@@ -62,16 +62,17 @@ Agent(
     memory:  MemoryConfig | None = None,  # Redis-backed session memory
     context: str | None = None,        # extra context appended to system prompt
     data:    DataConfig | None = None, # RAG config (reserved, not yet implemented)
+    audit:   AuditConfig | None = None, # structured audit logging
 )
 ```
 
-### ModelConfig — provider is auto-detected from model name
+### ModelConfig — explicit `provider/model-name` format
 
 ```python
-{"model": "gpt-4o-mini",       "api_key": "sk-..."}           # OpenAI
-{"model": "claude-sonnet-4-6", "api_key": "sk-ant-..."}        # Anthropic
-{"model": "gemini-1.5-pro",    "api_key": "..."}               # Gemini
-{"model": "deepseek-chat",     "api_key": "sk-...", "base_url": "https://api.deepseek.com"}  # any OpenAI-compatible
+{"model": "openai/gpt-4o-mini",       "api_key": "sk-..."}     # OpenAI
+{"model": "anthropic/claude-sonnet-4-6", "api_key": "sk-ant-..."} # Anthropic
+{"model": "gemini/gemini-1.5-pro",     "api_key": "..."}        # Gemini
+{"model": "openai/deepseek-chat",      "api_key": "sk-...", "base_url": "https://api.deepseek.com"}  # any OpenAI-compatible
 ```
 
 ### With Redis memory
@@ -79,7 +80,7 @@ Agent(
 ```python
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     memory={
         "type":       "redis",
         "connection": "redis://localhost:6379",
@@ -99,7 +100,7 @@ curl -X POST http://localhost:8000 \
 ```python
 agent = Agent(
     role="You are a file assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     mcps=[{
         "type":    "stdio",
         "command": "npx",
@@ -108,11 +109,70 @@ agent = Agent(
 )
 ```
 
+### With audit logging
+
+```python
+agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    audit={
+        "backend": "console",       # "console", "file", or "callback"
+        "agent_name": "my-agent",
+    },
+)
+```
+
+**Console backend** — emits structured JSON to the `agentinc.audit` logger:
+
+```python
+audit={"backend": "console"}
+```
+
+**File backend** — appends JSONL to a file:
+
+```python
+audit={"backend": "file", "file_path": "audit.jsonl"}
+```
+
+**Callback backend** — calls your function (sync or async) for each event:
+
+```python
+async def my_handler(event):
+    print(event.event_type, event.data)
+
+audit={"backend": "callback", "callback": my_handler}
+```
+
+**AuditConfig options:**
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `backend` | `str` | required | `"console"`, `"file"`, or `"callback"` |
+| `file_path` | `str` | `"audit.jsonl"` | Output path (file backend only) |
+| `callback` | `Callable` | required for callback | Handler function |
+| `max_content_length` | `int` | `500` | Truncation limit (0 = unlimited) |
+| `events` | `list[str]` | all | Filter which event types to emit |
+| `agent_name` | `str` | `None` | Name tag included in every event |
+
+**Audit events emitted:**
+
+| Event | When | Key data |
+|-------|------|----------|
+| `invocation.start` | `run()` called | message, session_id |
+| `llm.request` | Before LLM call | model, message_count, tool_count |
+| `llm.response` | After LLM responds | token_usage, latency_ms |
+| `tool.call` | Before tool dispatch | tool_name, arguments |
+| `tool.result` | After tool returns | tool_name, result, latency_ms |
+| `invocation.end` | `run()` completes | total_latency_ms, total_token_usage |
+| `invocation.error` | Exception in `run()` | error_type, message |
+
+Token usage (input/output/total tokens) is tracked automatically for OpenAI, Anthropic, and Gemini providers and included in `llm.response` and `invocation.end` events.
+
 ## What's in the SDK
 
 | Export | Type | Description |
 |--------|------|-------------|
-| `Agent` | Class | Main developer-facing class — wires provider, tools, memory, MCP |
+| `Agent` | Class | Main developer-facing class — wires provider, tools, memory, MCP, audit |
 | `AgentProtocol` | Protocol | Universal agent contract — implement `run()` |
 | `ToolProtocol` | Protocol | Tool contract — implement `schema()` + `call()` |
 | `AgentInput` | Model | Input to every agent invocation |
@@ -120,8 +180,11 @@ agent = Agent(
 | `Message` | Model | Conversation history entry |
 | `ToolCall` | Model | Tool invocation request |
 | `ToolSchema` | Model | Tool JSON Schema description |
+| `TokenUsage` | Model | Token counts (input, output, total) |
+| `AuditEvent` | Model | Structured audit event |
 | `ModelConfig` | TypedDict | Provider + credentials config |
 | `MemoryConfig` | TypedDict | Redis memory config |
+| `AuditConfig` | TypedDict | Audit backend config |
 | `MCPConfig` | TypedDict | MCP server connection config |
 | `DataConfig` | TypedDict | RAG config (reserved) |
 | `ToolWrapper` | Class | Wraps any callable as a `ToolProtocol` |

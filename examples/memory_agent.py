@@ -47,7 +47,7 @@ from agentinc.sdk.serve import serve
 
 agent = Agent(
     role="You are a friendly assistant with a long memory. Remember everything the user tells you.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     memory={
         "type":       "redis",
         "connection": os.environ.get("REDIS_URL", "redis://localhost:6379/0"),

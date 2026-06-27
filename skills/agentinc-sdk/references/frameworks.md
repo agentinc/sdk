@@ -34,7 +34,7 @@ def calculator(expression: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant. Use tools to answer questions accurately.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather, calculator],
 )
 
@@ -45,7 +45,7 @@ serve(agent, name="openai-agent", port=8000)
 ```python
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     memory={"type": "redis", "connection": "redis://localhost:6379"},
 )
 ```
@@ -73,7 +73,7 @@ def lookup(topic: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+    model={"model": "anthropic/claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
     tools=[lookup],
 )
 
@@ -93,7 +93,7 @@ from agentinc.sdk.serve import serve
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gemini-1.5-pro", "api_key": os.environ["GOOGLE_API_KEY"]},
+    model={"model": "gemini/gemini-1.5-pro", "api_key": os.environ["GOOGLE_API_KEY"]},
 )
 
 serve(agent, name="gemini-agent", port=8005)
@@ -103,14 +103,14 @@ serve(agent, name="gemini-agent", port=8005)
 
 ## OpenAI-Compatible Endpoints
 
-Any provider with an OpenAI-compatible API (DeepSeek, Groq, Ollama, Together, etc.) works with `base_url`:
+Any provider with an OpenAI-compatible API (DeepSeek, Groq, Ollama, Together, etc.) works with `openai/` prefix + `base_url`:
 
 ```python
 # DeepSeek
 agent = Agent(
     role="You are a helpful assistant.",
     model={
-        "model":    "deepseek-chat",
+        "model":    "openai/deepseek-chat",
         "api_key":  os.environ["DEEPSEEK_API_KEY"],
         "base_url": "https://api.deepseek.com",
     },
@@ -120,7 +120,7 @@ agent = Agent(
 agent = Agent(
     role="You are a helpful assistant.",
     model={
-        "model":    "llama-3.3-70b-versatile",
+        "model":    "openai/llama-3.3-70b-versatile",
         "api_key":  os.environ["GROQ_API_KEY"],
         "base_url": "https://api.groq.com/openai/v1",
     },
@@ -130,7 +130,7 @@ agent = Agent(
 agent = Agent(
     role="You are a helpful assistant.",
     model={
-        "model":    "llama3.2",
+        "model":    "openai/llama3.2",
         "api_key":  "ollama",          # any non-empty string
         "base_url": "http://localhost:11434/v1",
     },

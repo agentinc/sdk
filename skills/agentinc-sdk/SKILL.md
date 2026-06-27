@@ -46,6 +46,8 @@ from agentinc.sdk import (
     Message,        # Pydantic model — conversation history entry
     ToolCall,       # Pydantic model — tool invocation request
     ToolSchema,     # Pydantic model — tool JSON Schema description
+    TokenUsage,     # Pydantic model — token counts (input, output, total)
+    AuditEvent,     # Pydantic model — structured audit event
     ToolWrapper,    # Class — wraps callable as ToolProtocol
     tool,           # Decorator — function → ToolWrapper
     # Config TypedDicts
@@ -53,6 +55,7 @@ from agentinc.sdk import (
     MemoryConfig,
     MCPConfig,
     DataConfig,
+    AuditConfig,    # Audit backend config
     # Deprecated
     RawAdapter,     # DEPRECATED — use Agent() instead
 )
@@ -69,7 +72,7 @@ from agentinc.sdk import Agent
 from agentinc.sdk.serve import serve
 
 serve(
-    Agent(role="You are a helpful assistant.", model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}),
+    Agent(role="You are a helpful assistant.", model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]}),
     name="assistant", port=8000,
 )
 ```
@@ -85,6 +88,7 @@ Agent(
     memory:  MemoryConfig | None = None,  # Redis-backed session memory
     context: str | None = None,        # extra context appended to system prompt
     data:    DataConfig | None = None, # RAG config (reserved, not yet implemented)
+    audit:   AuditConfig | None = None, # structured audit logging
 )
 ```
 
@@ -94,20 +98,19 @@ Agent(
 
 ```python
 {
-    "model":    str,       # "gpt-4o-mini", "claude-sonnet-4-6", "gemini-1.5-pro", "deepseek-chat", …
+    "model":    str,       # "openai/gpt-4o-mini", "anthropic/claude-sonnet-4-6", "gemini/gemini-1.5-pro"
     "api_key":  str,
-    "base_url": str,       # optional — any OpenAI-compatible endpoint (DeepSeek, Groq, Ollama, …)
+    "base_url": str,       # optional — for OpenAI-compatible endpoints (DeepSeek, Groq, Ollama, …)
 }
 ```
 
-Provider is auto-detected from the model string prefix. When `base_url` is set, the OpenAI-compatible provider is always used regardless of model name.
+Uses explicit `provider/model-name` format.
 
-| Model prefix | Provider | Extra needed |
+| Provider prefix | Provider | Extra needed |
 |---|---|---|
-| `gpt-*`, `o1-*`, `o3-*` | OpenAI | `[openai]` |
-| `claude-*` | Anthropic | `[anthropic]` |
-| `gemini-*` | Google Gemini | `[gemini]` |
-| anything + `base_url` | OpenAI-compatible | `[openai]` |
+| `openai/` | OpenAI (+ any compatible endpoint) | `[openai]` |
+| `anthropic/` | Anthropic | `[anthropic]` |
+| `gemini/` | Google Gemini | `[gemini]` |
 
 ### MemoryConfig
 
@@ -149,7 +152,7 @@ def get_weather(city: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather],
 )
 serve(agent, name="assistant", port=8000)
@@ -164,7 +167,7 @@ from agentinc.sdk.serve import serve
 
 agent = Agent(
     role="You are a customer support agent.",
-    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+    model={"model": "anthropic/claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
     memory={"type": "redis", "connection": "redis://localhost:6379", "password": "secret"},
 )
 serve(agent, name="support", port=8000)
@@ -176,7 +179,7 @@ serve(agent, name="support", port=8000)
 agent = Agent(
     role="You are a helpful assistant.",
     model={
-        "model":    "deepseek-chat",
+        "model":    "openai/deepseek-chat",
         "api_key":  os.environ["DEEPSEEK_API_KEY"],
         "base_url": "https://api.deepseek.com",
     },
@@ -188,7 +191,7 @@ agent = Agent(
 ```python
 agent = Agent(
     role="You are a file assistant.",
-    model={"model": "gpt-4o", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o", "api_key": os.environ["OPENAI_API_KEY"]},
     mcps=[{"type": "stdio", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]}],
 )
 ```

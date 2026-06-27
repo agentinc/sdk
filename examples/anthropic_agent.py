@@ -32,7 +32,7 @@ def lookup(topic: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+    model={"model": "anthropic/claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
     tools=[lookup],
 )
 

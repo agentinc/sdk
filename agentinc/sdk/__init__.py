@@ -1,4 +1,5 @@
 from .agent import Agent
+from .audit.schemas import AuditConfig, AuditEvent
 from .protocol import AgentFactory, AgentProtocol, ToolProtocol
 from .raw import RawAdapter
 from .schemas import (
@@ -9,6 +10,7 @@ from .schemas import (
     MemoryConfig,
     Message,
     ModelConfig,
+    TokenUsage,
     ToolCall,
     ToolSchema,
 )
@@ -26,11 +28,15 @@ __all__ = [
     "Message",
     "ToolCall",
     "ToolSchema",
+    "TokenUsage",
     # Config
     "ModelConfig",
     "MemoryConfig",
     "MCPConfig",
     "DataConfig",
+    "AuditConfig",
+    # Audit
+    "AuditEvent",
     # Tools
     "ToolWrapper",
     "tool",

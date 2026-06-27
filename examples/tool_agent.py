@@ -37,7 +37,7 @@ async def main():
     print("\n=== Agent with tools ===")
     agent = Agent(
         role="You are a calculator assistant. Use the tools to compute answers.",
-        model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+        model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
         tools=[add, multiply],
     )
 

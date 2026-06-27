@@ -4,7 +4,7 @@ import json
 import logging
 from typing import AsyncIterator
 
-from ..schemas import AgentOutput, ModelConfig, ToolCall, ToolSchema
+from ..schemas import AgentOutput, ModelConfig, TokenUsage, ToolCall, ToolSchema
 
 log = logging.getLogger("agentinc.sdk.providers.openai")
 
@@ -63,9 +63,19 @@ class OpenAIProvider:
             messages=messages,
             tools=openai_tools,
             stream=True,
+            stream_options={"include_usage": True},
         )
 
+        usage: TokenUsage | None = None
+        finish_reason: str | None = None
         async for chunk in response:
+            if hasattr(chunk, "usage") and chunk.usage:
+                usage = TokenUsage(
+                    input_tokens=chunk.usage.prompt_tokens or 0,
+                    output_tokens=chunk.usage.completion_tokens or 0,
+                    total_tokens=chunk.usage.total_tokens or 0,
+                )
+
             if not chunk.choices:
                 continue
             choice = chunk.choices[0]
@@ -87,21 +97,21 @@ class OpenAIProvider:
                         if tc.function.arguments:
                             accumulated[idx]["arguments"] += tc.function.arguments
 
-            if choice.finish_reason == "tool_calls":
-                tool_calls = [
-                    ToolCall(
-                        id=v["id"],
-                        name=v["name"],
-                        arguments=json.loads(v["arguments"]) if v["arguments"] else {},
-                    )
-                    for v in accumulated.values()
-                ]
-                yield AgentOutput(tool_calls=tool_calls, done=False)
-                return
+            if choice.finish_reason:
+                finish_reason = choice.finish_reason
 
-            if choice.finish_reason == "stop":
-                yield AgentOutput(content="", done=True)
-                return
+        if finish_reason == "tool_calls":
+            tool_calls = [
+                ToolCall(
+                    id=v["id"],
+                    name=v["name"],
+                    arguments=json.loads(v["arguments"]) if v["arguments"] else {},
+                )
+                for v in accumulated.values()
+            ]
+            yield AgentOutput(tool_calls=tool_calls, done=False, token_usage=usage)
+        else:
+            yield AgentOutput(content="", done=True, token_usage=usage)
 
     async def _blocking(self, messages: list[dict], openai_tools) -> AsyncIterator[AgentOutput]:
         response = await self._client.chat.completions.create(
@@ -113,6 +123,14 @@ class OpenAIProvider:
         choice = response.choices[0]
         msg = choice.message
 
+        usage = None
+        if response.usage:
+            usage = TokenUsage(
+                input_tokens=response.usage.prompt_tokens or 0,
+                output_tokens=response.usage.completion_tokens or 0,
+                total_tokens=response.usage.total_tokens or 0,
+            )
+
         if msg.tool_calls:
             tool_calls = [
                 ToolCall(
@@ -122,6 +140,6 @@ class OpenAIProvider:
                 )
                 for tc in msg.tool_calls
             ]
-            yield AgentOutput(tool_calls=tool_calls, done=False)
+            yield AgentOutput(tool_calls=tool_calls, done=False, token_usage=usage)
         else:
-            yield AgentOutput(content=msg.content or "", done=True)
+            yield AgentOutput(content=msg.content or "", done=True, token_usage=usage)

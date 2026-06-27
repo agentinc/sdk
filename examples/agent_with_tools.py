@@ -47,7 +47,7 @@ def lookup_person(name: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant. Use the tools available to answer questions accurately.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather, calculator, lookup_person],
 )
 

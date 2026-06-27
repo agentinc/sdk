@@ -246,7 +246,7 @@
     <a href="#" class="sidebar-logo">
       <div class="sidebar-logo-icon"><img id="sidebar-logo-image" src="images/logo_white.svg" alt="" aria-hidden="true"/></div>
       <span class="sidebar-logo-text">agentinc-sdk</span>
-      <span class="sidebar-version">v0.2.0</span>
+      <span class="sidebar-version">v0.3.0</span>
     </a>
   </div>
   <div class="sidebar-nav">
@@ -263,6 +263,7 @@
       <a href="#model-config" class="sidebar-link">ModelConfig</a>
       <a href="#memory-config" class="sidebar-link">MemoryConfig</a>
       <a href="#mcp-config" class="sidebar-link">MCPConfig</a>
+      <a href="#audit-config" class="sidebar-link">AuditConfig</a>
       <a href="#agent-protocol" class="sidebar-link">AgentProtocol</a>
       <a href="#tool-protocol" class="sidebar-link">ToolProtocol</a>
       <a href="#schemas" class="sidebar-link">Schemas</a>
@@ -393,7 +394,7 @@ def get_weather(city: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather],
 )
 
@@ -437,30 +438,31 @@ curl -X POST http://localhost:8000 \
     memory:  MemoryConfig | None = None,  # Redis-backed session memory
     context: str | None = None,           # extra context appended to system prompt
     data:    DataConfig | None = None,    # RAG config (reserved)
+    audit:   AuditConfig | None = None,   # structured audit logging
 )</code></pre>
     </div>
 
     <div class="section" id="model-config">
       <h2>ModelConfig</h2>
-      <p class="section-desc">Provider credentials as a plain dict. Provider auto-detected from model name prefix. When <code>base_url</code> is set, the OpenAI-compatible provider is used regardless of model name.</p>
+      <p class="section-desc">Provider credentials as a plain dict. Use the <code>provider/model-name</code> format to specify the provider explicitly.</p>
       <pre><div class="code-header">python<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python"># OpenAI
-{"model": "gpt-4o-mini",       "api_key": "sk-..."}
+{"model": "openai/gpt-4o-mini",         "api_key": "sk-..."}
 
 # Anthropic
-{"model": "claude-sonnet-4-6", "api_key": "sk-ant-..."}
+{"model": "anthropic/claude-sonnet-4-6", "api_key": "sk-ant-..."}
 
 # Google Gemini
-{"model": "gemini-1.5-pro",    "api_key": "..."}
+{"model": "gemini/gemini-1.5-pro",      "api_key": "..."}
 
 # Any OpenAI-compatible endpoint (DeepSeek, Groq, Ollama, …)
-{"model": "deepseek-chat", "api_key": "sk-...", "base_url": "https://api.deepseek.com"}</code></pre>
+{"model": "openai/deepseek-chat", "api_key": "sk-...", "base_url": "https://api.deepseek.com"}</code></pre>
       <div class="table-wrap"><table>
-        <thead><tr><th>Model prefix</th><th>Auto-detected provider</th><th>Required extra</th></tr></thead>
+        <thead><tr><th>Provider prefix</th><th>Provider</th><th>Required extra</th></tr></thead>
         <tbody>
-          <tr><td><code>gpt-*</code>, <code>o1-*</code>, <code>o3-*</code></td><td>OpenAI</td><td><code>[openai]</code></td></tr>
-          <tr><td><code>claude-*</code></td><td>Anthropic</td><td><code>[anthropic]</code></td></tr>
-          <tr><td><code>gemini-*</code></td><td>Google Gemini</td><td><code>[gemini]</code></td></tr>
-          <tr><td>any + <code>base_url</code></td><td>OpenAI-compatible</td><td><code>[openai]</code></td></tr>
+          <tr><td><code>openai/</code></td><td>OpenAI (+ any compatible endpoint)</td><td><code>[openai]</code></td></tr>
+          <tr><td><code>anthropic/</code></td><td>Anthropic</td><td><code>[anthropic]</code></td></tr>
+          <tr><td><code>gemini/</code></td><td>Google Gemini</td><td><code>[gemini]</code></td></tr>
+          <tr><td><code>openai/</code> + <code>base_url</code></td><td>OpenAI-compatible</td><td><code>[openai]</code></td></tr>
         </tbody>
       </table></div>
     </div>
@@ -495,6 +497,51 @@ curl -X POST http://localhost:8000 \
     "type": "sse",
     "url":  "http://localhost:3001/sse",
 }</code></pre>
+    </div>
+
+    <div class="section" id="audit-config">
+      <h2>AuditConfig</h2>
+      <p class="section-desc">Opt-in structured audit logging. Captures invocation lifecycle, LLM calls, tool dispatch, token usage, and errors. No overhead when <code>audit=None</code> (the default).</p>
+
+      <pre><div class="code-header">python — console backend<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">agent = Agent(
+    role="You are a helpful assistant.",
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    audit={"backend": "console", "agent_name": "my-agent"},
+)</code></pre>
+
+      <pre><div class="code-header">python — file backend (JSONL)<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">audit={"backend": "file", "file_path": "audit.jsonl"}</code></pre>
+
+      <pre><div class="code-header">python — callback backend<button class="copy-code" onclick="copyBlock(this)">Copy</button></div><code class="language-python">async def my_handler(event):
+    print(event.event_type, event.data)
+
+audit={"backend": "callback", "callback": my_handler}</code></pre>
+
+      <div class="table-wrap"><table>
+        <thead><tr><th>Key</th><th>Type</th><th>Default</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>backend</code></td><td><code>str</code></td><td>required</td><td><code>"console"</code>, <code>"file"</code>, or <code>"callback"</code></td></tr>
+          <tr><td><code>file_path</code></td><td><code>str</code></td><td><code>"audit.jsonl"</code></td><td>Output path (file backend only)</td></tr>
+          <tr><td><code>callback</code></td><td><code>Callable</code></td><td>required for callback</td><td>Sync or async handler function</td></tr>
+          <tr><td><code>max_content_length</code></td><td><code>int</code></td><td><code>500</code></td><td>Truncation limit for content in events (0 = unlimited)</td></tr>
+          <tr><td><code>events</code></td><td><code>list[str]</code></td><td>all</td><td>Filter which event types to emit</td></tr>
+          <tr><td><code>agent_name</code></td><td><code>str</code></td><td><code>None</code></td><td>Name tag included in every event</td></tr>
+        </tbody>
+      </table></div>
+
+      <h3>Audit Events</h3>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Event</th><th>When</th><th>Key data</th></tr></thead>
+        <tbody>
+          <tr><td><code>invocation.start</code></td><td><code>run()</code> called</td><td>message, session_id</td></tr>
+          <tr><td><code>llm.request</code></td><td>Before LLM call</td><td>model, message_count, tool_count</td></tr>
+          <tr><td><code>llm.response</code></td><td>After LLM responds</td><td>token_usage, latency_ms</td></tr>
+          <tr><td><code>tool.call</code></td><td>Before tool dispatch</td><td>tool_name, arguments</td></tr>
+          <tr><td><code>tool.result</code></td><td>After tool returns</td><td>tool_name, result, latency_ms</td></tr>
+          <tr><td><code>invocation.end</code></td><td><code>run()</code> completes</td><td>total_latency_ms, total_token_usage</td></tr>
+          <tr><td><code>invocation.error</code></td><td>Exception in <code>run()</code></td><td>error_type, message</td></tr>
+        </tbody>
+      </table></div>
+      <p>Token usage (input/output/total tokens) is tracked automatically for OpenAI, Anthropic, and Gemini providers.</p>
     </div>
 
     <div class="section" id="agent-protocol">
@@ -637,7 +684,7 @@ result = await greet(name="World")</code></pre>
 from agentinc.sdk.serve import create_app
 
 app = create_app(
-    Agent(role="You are helpful.", model={"model": "gpt-4o-mini", "api_key": "sk-..."}),
+    Agent(role="You are helpful.", model={"model": "openai/gpt-4o-mini", "api_key": "sk-..."}),
     name="my-agent",
 )
 # uvicorn myfile:app --port 8000</code></pre>
@@ -671,7 +718,7 @@ def get_weather(city: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather],
 )
 
@@ -691,7 +738,7 @@ def lookup(topic: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+    model={"model": "anthropic/claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
     tools=[lookup],
 )
 
@@ -707,7 +754,7 @@ from agentinc.sdk.serve import serve
 
 agent = Agent(
     role="You are a friendly assistant with a long memory.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     memory={
         "type":       "redis",
         "connection": os.environ.get("REDIS_URL", "redis://localhost:6379/0"),
@@ -739,7 +786,7 @@ def read_file(path: str) -> str:
 
 agent = Agent(
     role="You are a helpful file assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[read_file],   # local tools
     mcps=[{              # MCP tools — discovered on first run()
         "type":    "stdio",
@@ -862,7 +909,7 @@ def get_weather(city: str) -> str:
 # The platform reads this variable — name must be "agent"
 agent = Agent(
     role="You are a helpful weather assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather],
 )
 
@@ -891,11 +938,14 @@ if __name__ == "__main__":
     Message,        # Model — conversation history entry
     ToolCall,       # Model — tool invocation request
     ToolSchema,     # Model — tool JSON schema
+    TokenUsage,     # Model — token counts (input, output, total)
+    AuditEvent,     # Model — structured audit event
     # Config TypedDicts
     ModelConfig,    # Provider + credentials
     MemoryConfig,   # Redis memory config
     MCPConfig,      # MCP server connection config
     DataConfig,     # RAG config (reserved)
+    AuditConfig,    # Audit backend config
     # Tools
     ToolWrapper,    # Class — wraps callable as ToolProtocol
     tool,           # Decorator — function → ToolWrapper

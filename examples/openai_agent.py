@@ -32,7 +32,7 @@ def get_weather(city: str) -> str:
 
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[get_weather],
 )
 

@@ -47,7 +47,7 @@ serve(RawAdapter(openai_agent), ...)
 # After
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
+    model={"model": "openai/gpt-4o-mini", "api_key": os.environ["OPENAI_API_KEY"]},
     tools=[my_tool_fn],
 )
 serve(agent, ...)
@@ -66,7 +66,7 @@ serve(RawAdapter(anthropic_agent), ...)
 # After
 agent = Agent(
     role="You are a helpful assistant.",
-    model={"model": "claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
+    model={"model": "anthropic/claude-sonnet-4-6", "api_key": os.environ["ANTHROPIC_API_KEY"]},
 )
 serve(agent, ...)
 ```

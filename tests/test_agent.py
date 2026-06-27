@@ -18,7 +18,7 @@ from agentinc.sdk.schemas import ToolSchema
 # ---------------------------------------------------------------------------
 
 def _make_agent(**kwargs) -> Agent:
-    defaults = dict(role="You are helpful.", model={"model": "gpt-4o-mini", "api_key": "sk-test"})
+    defaults = dict(role="You are helpful.", model={"model": "openai/gpt-4o-mini", "api_key": "sk-test"})
     defaults.update(kwargs)
     return Agent(**defaults)
 

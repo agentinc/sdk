@@ -25,6 +25,7 @@ class Agent:
         memory:  MemoryConfig | None = None,
         context: str | None = None,
         data:    DataConfig | None = None,
+        audit:   AuditConfig | None = None,
     ) -> None: ...
 
     async def run(self, input: AgentInput) -> AsyncIterator[AgentOutput]: ...
@@ -41,6 +42,7 @@ Implements `AgentProtocol`. Pass directly to `serve()` or `create_app()`.
 - `memory` — Redis-backed session memory. See [MemoryConfig](#memoryconfig). When absent the agent is stateless (caller manages history via `AgentInput.history`).
 - `context` — Optional extra string appended to the system prompt at runtime.
 - `data` — RAG configuration. Accepted but not yet implemented — reserved for a future release.
+- `audit` — Structured audit logging. See [AuditConfig](#auditconfig). When `None` (default), no audit overhead.
 
 ---
 
@@ -52,19 +54,18 @@ These are plain Python `TypedDict` classes. Pass as regular dicts.
 
 ```python
 class ModelConfig(TypedDict, total=False):
-    model:    Required[str]   # e.g. "gpt-4o-mini", "claude-sonnet-4-6", "gemini-1.5-pro"
+    model:    Required[str]   # e.g. "openai/gpt-4o-mini", "anthropic/claude-sonnet-4-6", "gemini/gemini-1.5-pro"
     api_key:  Required[str]
-    base_url: str             # optional — enables any OpenAI-compatible endpoint
+    base_url: str             # optional — for OpenAI-compatible endpoints
 ```
 
-Provider auto-detection from `model` prefix:
+Uses explicit `provider/model-name` format:
 
-| Prefix | Provider | Install |
+| Provider prefix | Provider | Install |
 |--------|----------|---------|
-| `gpt-*`, `o1-*`, `o3-*` | OpenAI | `pip install 'agentinc-sdk[openai]'` |
-| `claude-*` | Anthropic | `pip install 'agentinc-sdk[anthropic]'` |
-| `gemini-*` | Google Gemini | `pip install 'agentinc-sdk[gemini]'` |
-| any + `base_url` | OpenAI-compatible | `pip install 'agentinc-sdk[openai]'` |
+| `openai/` | OpenAI (+ any compatible endpoint) | `pip install 'agentinc-sdk[openai]'` |
+| `anthropic/` | Anthropic | `pip install 'agentinc-sdk[anthropic]'` |
+| `gemini/` | Google Gemini | `pip install 'agentinc-sdk[gemini]'` |
 
 ### MemoryConfig
 
@@ -111,6 +112,25 @@ class DataConfig(TypedDict, total=False):
 
 Reserved for native RAG in a future release. The `data=` parameter is accepted by `Agent()` but currently ignored.
 
+### AuditConfig
+
+```python
+class AuditConfig(TypedDict, total=False):
+    backend:            Required[Literal["console", "file", "callback"]]
+    file_path:          str           # default: "audit.jsonl" (file backend)
+    callback:           Callable      # sync or async handler (callback backend)
+    max_content_length: int           # truncation limit, default 500 (0 = unlimited)
+    events:             list[str]     # filter which event types to emit (default: all)
+    agent_name:         str           # name tag included in every event
+```
+
+Built-in backends:
+- **console** — structured JSON via `logging.getLogger("agentinc.audit")`
+- **file** — appends JSONL to `file_path`
+- **callback** — calls your sync or async function with an `AuditEvent`
+
+Events emitted: `invocation.start`, `llm.request`, `llm.response`, `tool.call`, `tool.result`, `invocation.end`, `invocation.error`.
+
 ---
 
 ## Schemas
@@ -136,15 +156,17 @@ class AgentInput(BaseModel):
 
 ```python
 class AgentOutput(BaseModel):
-    content:    str | None      = None
-    tool_calls: list[ToolCall]  = Field(default_factory=list)
-    done:       bool            = False
-    metadata:   dict[str, Any]  = Field(default_factory=dict)
+    content:     str | None      = None
+    tool_calls:  list[ToolCall]  = Field(default_factory=list)
+    done:        bool            = False
+    metadata:    dict[str, Any]  = Field(default_factory=dict)
+    token_usage: TokenUsage | None = None
 ```
 
 - `content` — Text chunk.
 - `tool_calls` — Tool calls to dispatch. `Agent` handles dispatch internally.
 - `done` — Final chunk signal. The serve layer stops reading after `done=True`.
+- `token_usage` — Token counts from the provider (input, output, total). Populated on the final chunk of each LLM turn.
 
 ### Message
 
